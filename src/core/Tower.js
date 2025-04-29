@@ -40,38 +40,38 @@ class Tower {
   }
 
   /**
-   * Find a target from a list of enemies
-   * @param {Array} enemies - List of enemies to target
-   * @returns {Object|null} - The target enemy or null if none in range
+   * Find a target from a list of potential targets
+   * @param {Array} targets - List of targets (enemies/mooks) to select from
+   * @returns {Object|null} - The selected target or null if none in range
    */
-  findTarget(enemies) {
-    if (!enemies || enemies.length === 0) {
+  findTarget(targets) {
+    if (!targets || targets.length === 0) {
       return null;
     }
     
-    // Filter to enemies in range
-    const inRangeEnemies = enemies.filter(enemy => this.isInRange(enemy));
+    // Filter to targets in range
+    const inRangeTargets = targets.filter(target => this.isInRange(target));
     
-    if (inRangeEnemies.length === 0) {
+    if (inRangeTargets.length === 0) {
       return null;
     }
     
-    // Find closest enemy in range
-    return inRangeEnemies.reduce((closest, current) => {
+    // Find closest target in range
+    return inRangeTargets.reduce((closest, current) => {
       const closestDistance = this.distanceToTarget(closest);
       const currentDistance = this.distanceToTarget(current);
       
       return currentDistance < closestDistance ? current : closest;
-    }, inRangeEnemies[0]);
+    }, inRangeTargets[0]);
   }
 
   /**
-   * Attack an enemy
-   * @param {Object} enemy - The enemy to attack
+   * Attack a target (enemy/mook)
+   * @param {Object} target - The target to attack
    * @param {number} currentTime - Current game time in milliseconds
    * @returns {number} - Damage dealt (0 if on cooldown)
    */
-  attack(enemy, currentTime) {
+  attack(target, currentTime) {
     // Check if attack is on cooldown
     const cooldownTime = 1000 / this.attackSpeed; // Convert attacks/sec to milliseconds
     
@@ -82,13 +82,18 @@ class Tower {
     // Update last attack time
     this.lastAttackTime = currentTime;
     
-    // Make sure enemy is in range
-    if (!this.isInRange(enemy)) {
+    // Make sure target is in range
+    if (!this.isInRange(target)) {
       return 0;
     }
     
-    // Deal damage to enemy (return damage value even if takeDamage method doesn't exist)
-    return enemy.takeDamage ? enemy.takeDamage(this.damage) : this.damage;
+    // Deal damage to target using takeDamage method if available
+    if (target.takeDamage) {
+      return target.takeDamage(this.damage);
+    } else {
+      // For backward compatibility with targets that don't have takeDamage
+      return this.damage;
+    }
   }
 
   /**
