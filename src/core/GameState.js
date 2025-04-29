@@ -14,6 +14,7 @@ class GameState {
     this.playerLives = config.playerLives || 20;
     this.waveNumber = 0;
     this.score = 0;
+    this.map = config.map || null;
   }
 
   /**
@@ -22,12 +23,26 @@ class GameState {
    * @returns {boolean} - Whether the tower was added
    */
   addTower(tower) {
-    if (tower.cost <= this.playerResources) {
-      this.towers.push(tower);
-      this.playerResources -= tower.cost;
-      return true;
+    // Check if we have enough resources
+    if (tower.cost > this.playerResources) {
+      return false;
     }
-    return false;
+    
+    // If we have a map, check if the tower can be placed
+    if (this.map) {
+      const { x, y } = tower.position;
+      if (!this.map.canPlaceTower(x, y)) {
+        return false;
+      }
+      
+      // Mark the tower's position on the map
+      this.map.placeTower(x, y);
+    }
+    
+    // Add the tower and deduct resources
+    this.towers.push(tower);
+    this.playerResources -= tower.cost;
+    return true;
   }
 
   /**
@@ -48,6 +63,47 @@ class GameState {
     this.mooks.push(mook);
     // Also add to enemies for backward compatibility
     this.enemies.push(mook);
+  }
+
+  /**
+   * Spawn a new mook at a spawn point
+   * @param {Object} config - Mook configuration
+   * @param {string} [config.type='standard'] - Type of mook
+   * @param {number} [config.pathIndex=0] - Index of path to follow
+   * @param {number} [config.health] - Health points
+   * @param {number} [config.speed] - Movement speed
+   * @returns {Object} - The spawned mook
+   */
+  spawnMook(config = {}) {
+    // If no map, can't spawn at spawn point
+    if (!this.map) {
+      // Fallback to regular mook creation
+      const mook = new (require('./Mook'))({
+        position: { x: 0, y: 0 },
+        ...config
+      });
+      this.addMook(mook);
+      return mook;
+    }
+    
+    // Get path and spawn point
+    const pathIndex = config.pathIndex || 0;
+    if (pathIndex >= this.map.paths.length) {
+      return null; // Invalid path index
+    }
+    
+    const path = this.map.getPath(pathIndex);
+    const spawnPoint = path[0];
+    
+    // Create mook with spawn point position and path
+    const mook = new (require('./Mook'))({
+      position: { ...spawnPoint },
+      path: [...path],
+      ...config
+    });
+    
+    this.addMook(mook);
+    return mook;
   }
 
   /**
@@ -83,6 +139,35 @@ class GameState {
   }
 
   /**
+   * Remove a tower from the game
+   * @param {Object} tower - The tower to remove
+   * @param {boolean} [refund=false] - Whether to refund the tower cost
+   * @returns {boolean} - Whether the tower was removed
+   */
+  removeTower(tower, refund = false) {
+    const index = this.towers.indexOf(tower);
+    if (index === -1) {
+      return false;
+    }
+    
+    // Remove from array
+    this.towers.splice(index, 1);
+    
+    // If we have a map, update it
+    if (this.map) {
+      const { x, y } = tower.position;
+      this.map.removeTower(x, y);
+    }
+    
+    // Refund cost if requested
+    if (refund) {
+      this.playerResources += tower.cost;
+    }
+    
+    return true;
+  }
+
+  /**
    * Update the game state
    * @param {number} currentTime - Current game time in milliseconds
    * @param {number} [deltaTime=16] - Time elapsed since last update in milliseconds
@@ -106,7 +191,12 @@ class GameState {
     });
     
     // Process mook movement and remove dead mooks
-    this.mooks = this.mooks.filter(mook => {
+    const mooksToRemove = [];
+    
+    // First pass: process movement and identify mooks to remove
+    for (let i = 0; i < this.mooks.length; i++) {
+      const mook = this.mooks[i];
+      
       // Move mook along path
       if (mook.move) {
         mook.move(deltaTime);
@@ -116,17 +206,37 @@ class GameState {
       if (mook.isDead) {
         this.score += mook.reward || 0;
         this.playerResources += mook.reward || 0;
-        return false;
+        mooksToRemove.push(i);
+        continue;
       }
       
-      // Check if mook reached the end
-      if (mook.pathIndex >= (mook.path || []).length) {
-        this.playerLives--;
-        return false;
+      // Check if mook reached or is at the end of path
+      if (mook.pathIndex >= (mook.path || []).length - 1) {
+        if (this.map) {
+          // Check if mook is at exit point or the last point is an exit
+          const { x, y } = mook.position;
+          const lastPathPoint = mook.path && mook.path.length > 0 ? 
+            mook.path[mook.path.length - 1] : null;
+            
+          if (this.map.isExitPoint(x, y) || 
+              (lastPathPoint && this.map.isExitPoint(lastPathPoint.x, lastPathPoint.y))) {
+            this.playerLives--;
+            mooksToRemove.push(i);
+            continue;
+          }
+        } else if (mook.pathIndex >= (mook.path || []).length) {
+          // Legacy behavior
+          this.playerLives--;
+          mooksToRemove.push(i);
+          continue;
+        }
       }
-      
-      return true;
-    });
+    }
+    
+    // Remove mooks in reverse order (to avoid index shifting)
+    for (let i = mooksToRemove.length - 1; i >= 0; i--) {
+      this.mooks.splice(mooksToRemove[i], 1);
+    }
     
     // Update enemies list to match mooks (for backward compatibility)
     this.enemies = [...this.mooks];
@@ -142,11 +252,30 @@ class GameState {
 
   /**
    * Start a new wave of mooks
-   * @param {Array} mooks - Mooks to add in this wave
+   * @param {Object} [config] - Wave configuration
+   * @param {number} [config.count=10] - Number of mooks to spawn
+   * @param {string} [config.type='standard'] - Type of mooks
+   * @param {number} [config.delay=500] - Delay between spawns in milliseconds
    */
-  startWave(mooks) {
+  startWave(config = {}) {
     this.waveNumber++;
-    mooks.forEach(mook => this.addMook(mook));
+    
+    const count = config.count || 10;
+    const type = config.type || 'standard';
+    
+    // Spawn the first mook immediately
+    this.spawnMook({ type, pathIndex: 0 });
+    
+    // Schedule the rest
+    if (config.spawnImmediately) {
+      // Spawn all mooks at once for testing
+      for (let i = 1; i < count; i++) {
+        this.spawnMook({ type, pathIndex: i % (this.map?.paths.length || 1) });
+      }
+    } else {
+      // In a real game, you would set up delayed spawning here
+      // This would typically use setTimeout or a custom timer system
+    }
   }
 }
 
