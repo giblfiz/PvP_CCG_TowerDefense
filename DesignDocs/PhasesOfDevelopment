@@ -1,0 +1,101 @@
+# Development Philosophy & Major Phases (v1.1)
+
+## Development Philosophy
+
+This project adheres to a specific development philosophy designed for focused execution, leveraging AI assistance effectively, and aligning with the "fun toy" scope.
+
+* **Iterative & MVP-Focused:** We will build the game in distinct phases, starting with the absolute Minimum Viable Product (MVP) for the core mechanics and layering features incrementally. Each phase should result in a testable, potentially demonstrable state.
+* **Claude-Centric Coding:** The primary implementation ("coding") work will be tasked to Anthropic's Claude model via well-defined prompts and specifications. Human effort focuses on architecture, design, prompt engineering, testing, and integration.
+* **Test-Driven Development (TDD):** We will use TDD rigorously. Tests will be written *before* prompting Claude for implementation code. This serves as both specification and verification for the AI-generated code. Testing frameworks (e.g., Jest, Mocha) will be used extensively.
+* **Simple Tooling:** We favor small, sharp, command-line friendly tools. Avoid large, opinionated frameworks (like React, Angular) and complex IDEs where possible. Keep the build process simple and understandable.
+* **Dependency Management (Pragmatic Approach):**
+    * **Runtime Libraries (e.g., PixiJS):** Will be **vendored**. Pre-built distribution files will be downloaded and checked directly into the Git repository (e.g., in `vendor/`). They will be included via standard HTML script tags.
+    * **Development Tools (e.g., Testing Frameworks, Linters, Build Tools):** Will be managed using **npm** (or Yarn) and listed strictly under `devDependencies` in `package.json`.
+    * **Version Locking:** All entries in `package.json` for `devDependencies` will specify **exact versions** (e.g., `"jest": "29.5.0"`, not `^29.5.0`). The generated lock file (`package-lock.json` or `yarn.lock`) **will be committed** to the repository to ensure consistent tooling setup for all developers.
+    * **`node_modules`:** This directory **will be added** to `.gitignore` and will not be committed to the repository.
+* **Clear Interfaces & Architecture:** Success with AI code generation relies heavily on well-defined interfaces, clear architectural patterns, and precise specifications for each code module or function.
+* **Asynchronous PvP:** To manage complexity, the PvP interaction will be explicitly asynchronous, avoiding the challenges of real-time networking. Updates between players will have acceptable latency (~1 second).
+* **Free & Open:** The project aims to be "Free Beer" (no cost, no microtransactions, no ads). Code may potentially be open-sourced later (TBD).
+* **Chosen Technology:**
+    * Client: JavaScript (ES6+) with PixiJS (vendored) for rendering, running in web browsers.
+    * Backend: PHP with MySQL for persistence and asynchronous communication.
+
+## Major Development Phases
+
+The project will be developed in the following major phases:
+
+**Phase 0: Foundation & Setup**
+
+* **Goal:** Establish the development environment, tooling, project structure, and basic runnable application shell necessary for subsequent phases.
+* **Key Features / Deliverables:**
+    * Git repository setup with `.gitignore` (including `node_modules/`).
+    * **Vendored PixiJS:** Download `pixi.min.js` (or equivalent bundle) and place it in `vendor/pixi/`.
+    * **`package.json` for Dev Tools:** Initialize `package.json` (`npm init -y` or similar).
+    * **Install Dev Dependencies:** Install Testing framework (e.g., Jest or Mocha) and Linter (e.g., ESLint) using `npm install --save-dev <package>@x.y.z` (specifying **exact versions**).
+    * **Commit Lock File:** Add `package-lock.json` (or `yarn.lock`) to Git.
+    * **TDD Harness:** Configure testing framework (e.g., `jest.config.js`) and create a sample test file. Add test script to `package.json` (e.g., `"test": "jest"`).
+    * **Linter:** Configure linter (e.g., `.eslintrc.js`) and create a sample lint script in `package.json` (e.g., `"lint": "eslint src/**/*.js"`).
+    * **Basic `index.html`:** Create file loading the vendored PixiJS library and a basic `main.js` script.
+    * **Basic `main.js`:** Initialize a blank PixiJS Application and attach it to the DOM.
+    * **Build/Dev Server:** Simple script in `package.json` to serve the `index.html` locally (e.g., using `npx http-server .` or similar lightweight server).
+    * **Directory Structure:** Set up initial folders (`src/`, `tests/`, `vendor/`, `assets/`).
+    * **(Optional) Basic CI:** Setup GitHub Actions (or similar) to run lint and test scripts on commit/PR.
+* **End State:** A developer can clone the repo, run `npm install` (to get dev tools), run `npm test`, `npm run lint`, and `npm run start` (or equivalent serve script) to view a blank PixiJS canvas. The foundation is ready, respecting the dependency strategy.
+
+**Phase 1: Core Tower Defense**
+
+* **Goal:** Implement the fundamental single-player Tower Defense (TD) experience without card mechanics.
+* **Key Features / Deliverables:**
+    * **Map Rendering:** Load map data (e.g., from JSON), render visual representation using PixiJS Sprites/Graphics. Define path coordinates.
+    * **Mook Logic:** Create `Mook` class (health, speed, position). Implement movement along path coordinates. Implement basic spawn logic (e.g., `spawnWave(mookType, count, delay)`).
+    * **Tower Logic:** Create `BaseTower` class (cost, position, range). Implement `TowerPlacement` logic (check validity, deduct currency). Implement `BasicShooterTower` subclass (target acquisition within range, projectile firing).
+    * **Core Game Loop:** Manage game state (idle, wave active, build phase). Handle mook reaching end (damage player health). Track currency. Check win/loss conditions.
+    * **Minimal UI:** Display player health and currency using PixiJS Text. Add simple clickable areas/buttons for placing the basic tower.
+* **End State:** A playable, albeit very simple, single-player tower defense game. The core loop of placing towers to defeat waves of mooks is functional.
+
+**Phase 2: Dynamic Game Balancer**
+
+* **Goal:** Create the infrastructure for automated game balancing via AI vs AI simulation.
+* **Key Features / Deliverables:**
+    * **Headless Mode:** Refactor game loop and rendering to allow running game logic updates without a PixiJS stage/renderer attached.
+    * **Basic AI Player:** Implement an `AIPlayer` class that interacts with the game state. Simple logic: if currency > tower cost, place basic tower on a valid random spot. (No card logic yet).
+    * **Simulation Runner:** Script (`run_simulations.js`?) that instantiates two `AIPlayer`s, runs a headless game to completion, repeats N times.
+    * **Data Collection & Storage:** Record outcome (winner, duration) and potentially simple parameters (towers built) for each simulation run. Store results (e.g., in JSON file or simple DB table).
+    * **Parameter Tuning Logic:** Read simulation results. Implement a basic rule (e.g., if Basic Tower used by winner in >X% of wins, increase its cost in a config file `game_params.json`).
+* **End State:** The system can simulate gameplay automatically and provide data/suggestions for balancing the core TD mechanics implemented in Phase 1.
+
+**Phase 3: Card Mechanics Integration**
+
+* **Goal:** Introduce the core deckbuilding-related mechanics, replacing/augmenting the basic TD systems.
+* **Key Features / Deliverables:**
+    * **Card Data & Logic:** Define `Card` data structure (`{id, name, towerType, mookType, mookCount, cost?}`). Implement `Deck` and `Hand` management (draw, keep logic). Add card definitions (e.g., in `cards.json`).
+    * **Between-Wave UI:** Implement simple UI state for "Draw X, Keep Y" screen using PixiJS, allowing player selection.
+    * **Conditional Tower Building:** Modify `TowerPlacement` logic to check player's kept `Hand` for required `towerType` before allowing placement.
+    * **Mook Sending:** Implement logic for Player A's kept cards to add `mookType`/`mookCount` to a "pending send" list. Implement wave spawning for Player B (simulated) based on Player A's "pending send" list from the *previous* wave, adding cumulatively.
+    * **Attack Tower Implementation:** Create `AttackTower` subclass that, each wave end, adds specific mooks to the opponent's "pending send" list.
+    * **Update Balancer:** Adapt the Phase 2 balancer AI and data collection to account for card play and the new mechanics.
+* **End State:** A single-player game experience where tower construction and the primary offensive pressure (mook waves) are driven by the card draw and play system.
+
+**Phase 4: Persistence & Deckbuilding**
+
+* **Goal:** Add player state, allow deck customization between games, and integrate the backend.
+* **Key Features / Deliverables:**
+    * **Backend Schema & API (PHP/MySQL):** Define DB tables (`users`, `cards`, `decks`, `user_decks`). Create basic PHP API endpoints (`/register`, `/login`, `/cards`, `/decks/save`, `/decks/load`). Implement basic authentication (e.g., session token).
+    * **Client API Service:** Create a JS module (`api_service.js`) to handle `Workspace` calls to the backend API endpoints.
+    * **Deckbuilding UI:** Create a new game state/screen using PixiJS. Display available cards (fetched from API). Allow adding/removing cards to/from a deck list. Add Save/Load buttons triggering API calls.
+    * **Game Integration:** Modify game startup to fetch the player's selected deck (via API) instead of using a default one.
+    * **User Authentication Flow:** Implement basic login/register UI elements/flow on the client to interact with the backend.
+* **End State:** Players have persistent accounts, can build and save custom decks using a dedicated UI, and the game uses their selected deck.
+
+**Phase 5: PvP Implementation**
+
+* **Goal:** Enable two players to compete against each other using the asynchronous communication model.
+* **Key Features / Deliverables:**
+    * **Matchmaking Logic (Backend):** Simple queue system. Endpoint (`/matchmaking/join`) adds user to queue. When 2 users are present, create a game state record linking them, remove from queue, return opponent info/game ID.
+    * **Game State Relay (Backend):** API endpoint (`/game/{gameId}/action`) for players to POST actions (card plays, tower builds). Backend validates action, updates shared game state (in DB), possibly notifies opponent (or opponent polls). Endpoint (`/game/{gameId}/state`) for players to GET opponent's latest public state (health, currency, maybe board hash/summary).
+    * **Client PvP Communication:** Modify client to join matchmaking queue. On match found, periodically poll (`/game/{gameId}/state`) for opponent info. Send own actions via (`/game/{gameId}/action`).
+    * **Opponent State Display:** Use fetched opponent state to update UI elements (opponent health, currency). Implement the delayed/asynchronous board preview (fetch opponent tower placements, render simplified view).
+    * **Turn/Wave Synchronization:** Implement basic signaling via backend/API to indicate when both players have submitted actions for a build phase, allowing the action phase to begin synchronously (or as close as async allows).
+* **End State:** Two players can initiate, play, and complete a full game against each other, with game state updates relayed asynchronously via the backend. The core vision of the game is realized.
+
+
