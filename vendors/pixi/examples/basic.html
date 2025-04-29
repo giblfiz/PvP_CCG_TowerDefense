@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pixi.js Basic Example</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <script src="../pixi.min.js"></script>
+  <script>
+    // Create a Pixi Application
+    const app = new PIXI.Application({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      backgroundColor: 0x1099bb,
+      resolution: window.devicePixelRatio || 1,
+    });
+    document.body.appendChild(app.view);
+
+    // Create a container for our objects
+    const container = new PIXI.Container();
+    app.stage.addChild(container);
+
+    // Create a simple shape
+    const graphics = new PIXI.Graphics();
+    graphics.beginFill(0xFF0000);
+    graphics.drawRect(-50, -50, 100, 100);
+    graphics.endFill();
+    container.addChild(graphics);
+    
+    // Position in the center
+    container.x = app.screen.width / 2;
+    container.y = app.screen.height / 2;
+
+    // Add a ticker to animate
+    app.ticker.add(() => {
+      // Rotate the container
+      container.rotation += 0.01;
+    });
+  </script>
+</body>
+</html>

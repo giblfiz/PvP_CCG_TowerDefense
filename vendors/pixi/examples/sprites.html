@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pixi.js Sprites Example</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <script src="../pixi.min.js"></script>
+  <script>
+    // Create a Pixi Application
+    const app = new PIXI.Application({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      backgroundColor: 0x1099bb,
+      resolution: window.devicePixelRatio || 1,
+    });
+    document.body.appendChild(app.view);
+
+    // Create a texture (normally you'd load a real image)
+    // This example creates a simple colored rectangle as a texture
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ff9900';
+    ctx.fillRect(0, 0, 64, 64);
+    const texture = PIXI.Texture.from(canvas);
+
+    // Create 10 sprites using the texture
+    for (let i = 0; i < 10; i++) {
+      const sprite = new PIXI.Sprite(texture);
+      
+      // Set anchor point to center
+      sprite.anchor.set(0.5);
+      
+      // Random position
+      sprite.x = Math.random() * app.screen.width;
+      sprite.y = Math.random() * app.screen.height;
+      
+      // Random scale
+      const scale = 0.5 + Math.random();
+      sprite.scale.set(scale);
+      
+      // Add to stage
+      app.stage.addChild(sprite);
+      
+      // Store some data for animation
+      sprite.speedX = Math.random() * 2 - 1;
+      sprite.speedY = Math.random() * 2 - 1;
+    }
+    
+    // Animation loop
+    app.ticker.add(() => {
+      // Update all sprites
+      for (let i = 0; i < app.stage.children.length; i++) {
+        const sprite = app.stage.children[i];
+        
+        // Move the sprite
+        sprite.x += sprite.speedX;
+        sprite.y += sprite.speedY;
+        
+        // Rotate the sprite
+        sprite.rotation += 0.01;
+        
+        // Bounce off edges
+        if (sprite.x < 0 || sprite.x > app.screen.width) {
+          sprite.speedX *= -1;
+        }
+        if (sprite.y < 0 || sprite.y > app.screen.height) {
+          sprite.speedY *= -1;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
