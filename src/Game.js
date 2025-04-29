@@ -55,36 +55,88 @@ class Game {
    * Initialize the game
    */
   init() {
-    // Get canvas container
-    this.canvasContainer = document.getElementById('game-canvas');
-    
-    // Create renderer
-    this.renderer = new Renderer({
-      canvasContainer: this.canvasContainer,
-      cellSize: this.config.cellSize
-    });
-    
-    // Create input handler
-    this.inputHandler = new InputHandler({
-      canvas: this.canvasContainer,
-      cellSize: this.config.cellSize,
-      onCellClick: this.handleCellClick.bind(this),
-      onPan: this.handlePan.bind(this),
-      onZoom: this.handleZoom.bind(this)
-    });
-    
-    // Create UI handler
-    this.ui = new GameUI({
-      onStartWave: this.startWave.bind(this),
-      onSelectTower: this.selectTowerType.bind(this)
-    });
-    
-    // Initialize game state
-    this.createNewGame();
-    
-    // Start game loop
-    this.lastUpdateTime = Date.now();
-    requestAnimationFrame(this.gameLoop.bind(this));
+    try {
+      console.log("Game initialization started");
+      
+      // Get canvas container
+      this.canvasContainer = document.getElementById('game-canvas');
+      
+      if (!this.canvasContainer) {
+        throw new Error("Canvas container not found");
+      }
+      
+      console.log("Canvas container found");
+      
+      // Create renderer
+      try {
+        this.renderer = new Renderer({
+          canvasContainer: this.canvasContainer,
+          cellSize: this.config.cellSize
+        });
+        console.log("Renderer initialized");
+      } catch (rendererError) {
+        console.error("Error initializing renderer:", rendererError);
+        this.showErrorMessage("Failed to initialize renderer. See console for details.");
+        throw rendererError;
+      }
+      
+      // Create input handler
+      try {
+        this.inputHandler = new InputHandler({
+          canvas: this.canvasContainer,
+          cellSize: this.config.cellSize,
+          onCellClick: this.handleCellClick.bind(this),
+          onPan: this.handlePan.bind(this),
+          onZoom: this.handleZoom.bind(this)
+        });
+        console.log("Input handler initialized");
+      } catch (inputError) {
+        console.error("Error initializing input handler:", inputError);
+      }
+      
+      // Create UI handler
+      try {
+        this.ui = new GameUI({
+          onStartWave: this.startWave.bind(this),
+          onSelectTower: this.selectTowerType.bind(this)
+        });
+        console.log("UI handler initialized");
+      } catch (uiError) {
+        console.error("Error initializing UI handler:", uiError);
+      }
+      
+      // Initialize game state
+      this.createNewGame();
+      
+      // Start game loop
+      this.lastUpdateTime = Date.now();
+      requestAnimationFrame(this.gameLoop.bind(this));
+      
+      console.log("Game initialization completed");
+    } catch (error) {
+      console.error("Error during game initialization:", error);
+      this.showErrorMessage("Game initialization failed. See console for details.");
+    }
+  }
+  
+  /**
+   * Show an error message on the screen
+   * @param {string} message - Error message to display
+   */
+  showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'absolute';
+    errorDiv.style.top = '50%';
+    errorDiv.style.left = '50%';
+    errorDiv.style.transform = 'translate(-50%, -50%)';
+    errorDiv.style.padding = '20px';
+    errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
+    errorDiv.style.color = 'white';
+    errorDiv.style.borderRadius = '10px';
+    errorDiv.style.zIndex = '1000';
+    errorDiv.style.fontWeight = 'bold';
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
   }
 
   /**

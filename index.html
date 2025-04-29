@@ -24,30 +24,109 @@
             </div>
         </div>
         <canvas id="game-canvas"></canvas>
+        <div id="error-container" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(255, 0, 0, 0.7); color: white; padding: 20px; border-radius: 10px; z-index: 1000;"></div>
     </div>
 
     <!-- Load vendor library -->
-    <script src="vendors/pixi/pixi.min.js"></script>
-    
-    <!-- Load core game files -->
-    <script src="src/core/Tower.js"></script>
-    <script src="src/core/Mook.js"></script>
-    <script src="src/core/Map.js"></script>
-    <script src="src/core/GameState.js"></script>
-    
-    <!-- Load UI and rendering components -->
-    <script src="src/ui/Renderer.js"></script>
-    <script src="src/ui/InputHandler.js"></script>
-    <script src="src/ui/GameUI.js"></script>
-    
-    <!-- Main game entry point -->
-    <script src="src/Game.js"></script>
     <script>
-        // Initialize the game when window loads
-        window.onload = function() {
-            const game = new Game();
-            game.init();
-        };
+        // Check PIXI.js loading
+        function checkPixiLoaded() {
+            try {
+                if (typeof PIXI === 'undefined') {
+                    throw new Error('PIXI.js failed to load');
+                }
+                console.log('PIXI.js loaded successfully');
+                return true;
+            } catch (error) {
+                console.error('PIXI.js load check failed:', error);
+                document.getElementById('error-container').style.display = 'block';
+                document.getElementById('error-container').textContent = 
+                    'Failed to load PIXI.js. Please check your browser console for details.';
+                return false;
+            }
+        }
+    </script>
+    <script src="vendors/pixi/pixi.min.js"></script>
+    <script>
+        // Verify PIXI.js loaded correctly
+        if (!checkPixiLoaded()) {
+            // Try alternative load if first one failed
+            console.log('Attempting to load PIXI.js again with different method');
+            const pixiScript = document.createElement('script');
+            pixiScript.src = 'vendors/pixi/pixi.js'; // Try full version instead of minified
+            pixiScript.onload = function() {
+                console.log('PIXI.js loaded via alternative method');
+                loadGameScripts();
+            };
+            pixiScript.onerror = function() {
+                console.error('Alternative PIXI.js load failed');
+                document.getElementById('error-container').textContent = 
+                    'Failed to load game engine. Please try a different browser.';
+            };
+            document.head.appendChild(pixiScript);
+        } else {
+            loadGameScripts();
+        }
+        
+        function loadGameScripts() {
+            // Function to dynamically load scripts in sequence
+            function loadScript(url, callback) {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = url;
+                script.onload = callback;
+                script.onerror = function() {
+                    console.error('Failed to load script:', url);
+                    document.getElementById('error-container').style.display = 'block';
+                    document.getElementById('error-container').textContent = 
+                        'Failed to load game scripts. Please check your browser console.';
+                };
+                document.body.appendChild(script);
+            }
+            
+            // Define all scripts to load in order
+            const scripts = [
+                'src/core/Tower.js',
+                'src/core/Mook.js',
+                'src/core/Map.js',
+                'src/core/GameState.js',
+                'src/ui/Renderer.js',
+                'src/ui/InputHandler.js',
+                'src/ui/GameUI.js',
+                'src/Game.js'
+            ];
+            
+            // Load scripts sequentially
+            let index = 0;
+            function loadNextScript() {
+                if (index < scripts.length) {
+                    loadScript(scripts[index], function() {
+                        index++;
+                        loadNextScript();
+                    });
+                } else {
+                    // All scripts loaded, initialize game
+                    initGame();
+                }
+            }
+            
+            // Start loading scripts
+            loadNextScript();
+        }
+        
+        // Initialize the game when all scripts are loaded
+        function initGame() {
+            try {
+                console.log('Initializing game...');
+                window.game = new Game();
+                window.game.init();
+            } catch (error) {
+                console.error('Game initialization failed:', error);
+                document.getElementById('error-container').style.display = 'block';
+                document.getElementById('error-container').textContent = 
+                    'Failed to initialize game. Error: ' + error.message;
+            }
+        }
     </script>
 </body>
 </html>

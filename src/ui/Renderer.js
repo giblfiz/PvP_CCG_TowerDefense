@@ -36,33 +36,62 @@ class Renderer {
    * Initialize the PixiJS application
    */
   initPixi() {
-    // Create Pixi Application
-    this.app = new PIXI.Application({
-      width: this.canvasContainer.clientWidth,
-      height: this.canvasContainer.clientHeight,
-      backgroundColor: 0x1a1a2e,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-      antialias: true
-    });
-    
-    // Add the Pixi canvas to DOM
-    this.canvasContainer.appendChild(this.app.view);
-    
-    // Create containers for different game elements
-    this.mapContainer = new PIXI.Container();
-    this.mooksContainer = new PIXI.Container();
-    this.towersContainer = new PIXI.Container();
-    this.uiContainer = new PIXI.Container();
-    
-    // Add containers to stage in the correct order
-    this.app.stage.addChild(this.mapContainer);
-    this.app.stage.addChild(this.mooksContainer);
-    this.app.stage.addChild(this.towersContainer);
-    this.app.stage.addChild(this.uiContainer);
-    
-    // Handle window resize
-    window.addEventListener('resize', this.onResize.bind(this));
+    try {
+      // Check if PIXI is available
+      if (typeof PIXI === 'undefined') {
+        throw new Error('PIXI.js is not loaded. Make sure the library is properly included.');
+      }
+      
+      console.log("PIXI version:", PIXI.VERSION);
+      
+      // Firefox compatibility: force canvas renderer if WebGL isn't working well
+      const rendererOptions = {
+        width: this.canvasContainer.clientWidth,
+        height: this.canvasContainer.clientHeight,
+        backgroundColor: 0x1a1a2e,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+        antialias: true
+      };
+      
+      // Create Pixi Application 
+      this.app = new PIXI.Application(rendererOptions);
+      
+      console.log("PIXI Application created with renderer type:", 
+                  this.app.renderer.type === PIXI.RENDERER_TYPE.WEBGL ? "WebGL" : "Canvas");
+      
+      // Add the Pixi canvas to DOM
+      this.canvasContainer.appendChild(this.app.view);
+      
+      // Add a visible background to check if rendering is working
+      const background = new PIXI.Graphics();
+      background.beginFill(0x3355aa);
+      background.drawRect(0, 0, this.app.renderer.width, this.app.renderer.height);
+      background.endFill();
+      this.app.stage.addChild(background);
+      
+      // Create containers for different game elements
+      this.mapContainer = new PIXI.Container();
+      this.mooksContainer = new PIXI.Container();
+      this.towersContainer = new PIXI.Container();
+      this.uiContainer = new PIXI.Container();
+      
+      // Add containers to stage in the correct order
+      this.app.stage.addChild(this.mapContainer);
+      this.app.stage.addChild(this.mooksContainer);
+      this.app.stage.addChild(this.towersContainer);
+      this.app.stage.addChild(this.uiContainer);
+      
+      // Handle window resize
+      window.addEventListener('resize', this.onResize.bind(this));
+      
+      // Force a render to check if it's working
+      this.app.renderer.render(this.app.stage);
+      console.log("Initial render completed");
+    } catch (error) {
+      console.error("Error initializing PIXI.js:", error);
+      throw error;
+    }
   }
 
   /**
