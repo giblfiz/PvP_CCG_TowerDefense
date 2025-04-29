@@ -1,0 +1,169 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #1a1a2e;
+    color: #ffffff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: none; /* Prevent default touch actions for mobile */
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+#ui-container {
+    position: absolute;
+    width: 100%;
+    z-index: 10;
+    pointer-events: none; /* Let touches pass through to the canvas except for UI elements */
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+}
+
+#stats-panel {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    pointer-events: auto;
+}
+
+#stats-panel > div {
+    display: flex;
+    align-items: center;
+    margin: 0 10px;
+}
+
+#stats-panel span {
+    margin-right: 5px;
+    font-size: 1.2em;
+}
+
+#controls-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: auto;
+    pointer-events: auto;
+}
+
+#start-wave-button {
+    background-color: #f05454;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-bottom: 10px;
+    transition: background-color 0.3s;
+}
+
+#start-wave-button:hover {
+    background-color: #e03444;
+}
+
+#tower-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tower-option {
+    background-color: #30475e;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tower-option:hover {
+    background-color: #3e5f7e;
+}
+
+.tower-option.selected {
+    background-color: #4e8cff;
+    border: 2px solid #ffffff;
+}
+
+.tower-option.unavailable {
+    background-color: #555;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* Game tile styling */
+.grid-cell {
+    stroke: #333;
+    stroke-width: 1;
+}
+
+.path-cell {
+    fill: #f7b731;
+}
+
+.empty-cell {
+    fill: #30475e;
+}
+
+.spawn-cell {
+    fill: #20bf6b;
+}
+
+.exit-cell {
+    fill: #eb3b5a;
+}
+
+.tower-cell {
+    fill: #4b7bec;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    #ui-container {
+        font-size: 0.9em;
+    }
+    
+    .tower-option {
+        padding: 6px 8px;
+    }
+}
+
+/* Animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 0.5s;
+}

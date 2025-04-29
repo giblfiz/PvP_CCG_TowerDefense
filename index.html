@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tower Defense Game</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-container">
+            <div id="stats-panel">
+                <div id="health-display"><span>❤️</span><span id="health-value">20</span></div>
+                <div id="money-display"><span>💰</span><span id="money-value">100</span></div>
+                <div id="wave-display"><span>🌊</span><span id="wave-value">0</span></div>
+            </div>
+            <div id="controls-panel">
+                <button id="start-wave-button">Start Wave</button>
+                <div id="tower-selector">
+                    <div class="tower-option selected" data-cost="20" data-type="basic">🗼 Basic ($20)</div>
+                    <div class="tower-option" data-cost="50" data-type="fast">⚡ Fast ($50)</div>
+                    <div class="tower-option" data-cost="75" data-type="aoe">💥 AoE ($75)</div>
+                </div>
+            </div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <!-- Load vendor library -->
+    <script src="vendors/pixi/pixi.min.js"></script>
+    
+    <!-- Load core game files -->
+    <script src="src/core/Tower.js"></script>
+    <script src="src/core/Mook.js"></script>
+    <script src="src/core/Map.js"></script>
+    <script src="src/core/GameState.js"></script>
+    
+    <!-- Load UI and rendering components -->
+    <script src="src/ui/Renderer.js"></script>
+    <script src="src/ui/InputHandler.js"></script>
+    <script src="src/ui/GameUI.js"></script>
+    
+    <!-- Main game entry point -->
+    <script src="src/Game.js"></script>
+    <script>
+        // Initialize the game when window loads
+        window.onload = function() {
+            const game = new Game();
+            game.init();
+        };
+    </script>
+</body>
+</html>
