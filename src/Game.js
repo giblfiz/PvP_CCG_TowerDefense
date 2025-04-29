@@ -374,7 +374,8 @@ class Game {
     // Set up wave configuration
     const waveConfig = {
       count: 10 + (this.gameState.waveNumber * 2), // More mooks in later waves
-      type: this.gameState.waveNumber % 3 === 0 ? 'armored' : 
+      type: this.gameState.waveNumber % 4 === 0 ? 'tank' :
+            this.gameState.waveNumber % 3 === 0 ? 'armored' : 
             this.gameState.waveNumber % 2 === 0 ? 'fast' : 'standard',
       spawnImmediately: false
     };
@@ -422,18 +423,42 @@ class Game {
 
   /**
    * Spawn a single mook
-   * @param {string} type - Type of mook to spawn
+   * @param {string} type - Type of mook to spawn ('standard', 'armored', 'fast', 'tank')
    */
   spawnMook(type) {
     // Pick a random path index
     const pathIndex = Math.floor(Math.random() * this.map.paths.length);
     
+    // Determine health and speed based on type
+    let health, speed;
+    switch (type) {
+      case 'tank':
+        // Tank mooks have default values set in TankMook class,
+        // but we can override them here if desired
+        health = 200;  // Higher HP
+        speed = 1.2;   // Slightly faster than standard
+        break;
+      case 'armored':
+        health = 150;
+        speed = 0.7;
+        break;
+      case 'fast':
+        health = 80;
+        speed = 2;
+        break;
+      case 'standard':
+      default:
+        health = 100;
+        speed = 1;
+        break;
+    }
+    
     // Spawn mook
     this.gameState.spawnMook({
       type,
       pathIndex,
-      health: type === 'armored' ? 150 : type === 'fast' ? 80 : 100,
-      speed: type === 'fast' ? 2 : type === 'armored' ? 0.7 : 1
+      health,
+      speed
     });
   }
 }

@@ -19,7 +19,8 @@ class Renderer {
     this.mookGraphics = {
       standard: '👾',
       armored: '🛡️',
-      fast: '🏃'
+      fast: '🏃',
+      tank: '🦾'
     };
     
     // Viewport state for panning/zooming
@@ -261,34 +262,43 @@ class Renderer {
         mook.position.y * this.cellSize + this.cellSize / 2
       );
       
-      // Add health bar
-      if (mook.health < 100) {
-        const healthBar = new PIXI.Graphics();
-        const barWidth = this.cellSize * 0.8;
-        const healthPercent = mook.health / 100;
-        
-        // Background (red)
-        healthBar.beginFill(0xff0000);
-        healthBar.drawRect(
-          -barWidth / 2,
-          this.cellSize * 0.4,
-          barWidth,
-          this.cellSize * 0.1
-        );
-        healthBar.endFill();
-        
-        // Foreground (green)
-        healthBar.beginFill(0x00ff00);
-        healthBar.drawRect(
-          -barWidth / 2,
-          this.cellSize * 0.4,
-          barWidth * healthPercent,
-          this.cellSize * 0.1
-        );
-        healthBar.endFill();
-        
-        text.addChild(healthBar);
+      // Add health bar for all mooks
+      const healthBar = new PIXI.Graphics();
+      const barWidth = this.cellSize * 0.8;
+      
+      // Calculate health percentage based on mook type
+      let maxHealth = 100; // default max health
+      
+      // Determine max health based on mook type
+      if (mookType === 'tank') {
+        maxHealth = 200;
+      } else if (mookType === 'armored') {
+        maxHealth = 150;
       }
+      
+      const healthPercent = Math.max(0, Math.min(1, mook.health / maxHealth));
+      
+      // Background (red)
+      healthBar.beginFill(0xff0000);
+      healthBar.drawRect(
+        -barWidth / 2,
+        this.cellSize * 0.4,
+        barWidth,
+        this.cellSize * 0.1
+      );
+      healthBar.endFill();
+      
+      // Foreground (green)
+      healthBar.beginFill(0x00ff00);
+      healthBar.drawRect(
+        -barWidth / 2,
+        this.cellSize * 0.4,
+        barWidth * healthPercent,
+        this.cellSize * 0.1
+      );
+      healthBar.endFill();
+      
+      text.addChild(healthBar);
       
       this.mooksContainer.addChild(text);
     });

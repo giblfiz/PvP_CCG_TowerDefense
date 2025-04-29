@@ -77,11 +77,23 @@ class GameState {
   spawnMook(config = {}) {
     // If no map, can't spawn at spawn point
     if (!this.map) {
-      // Fallback to regular mook creation
-      const mook = new (require('./Mook'))({
-        position: { x: 0, y: 0 },
-        ...config
-      });
+      // Create position
+      const position = { x: 0, y: 0 };
+      
+      // Select mook class based on type
+      let mook;
+      if (config.type === 'tank') {
+        mook = new (require('./TankMook'))({
+          position,
+          ...config
+        });
+      } else {
+        mook = new (require('./Mook'))({
+          position,
+          ...config
+        });
+      }
+      
       this.addMook(mook);
       return mook;
     }
@@ -95,12 +107,21 @@ class GameState {
     const path = this.map.getPath(pathIndex);
     const spawnPoint = path[0];
     
-    // Create mook with spawn point position and path
-    const mook = new (require('./Mook'))({
-      position: { ...spawnPoint },
-      path: [...path],
-      ...config
-    });
+    // Create mook with spawn point position and path based on type
+    let mook;
+    if (config.type === 'tank') {
+      mook = new (require('./TankMook'))({
+        position: { ...spawnPoint },
+        path: [...path],
+        ...config
+      });
+    } else {
+      mook = new (require('./Mook'))({
+        position: { ...spawnPoint },
+        path: [...path],
+        ...config
+      });
+    }
     
     this.addMook(mook);
     return mook;
@@ -254,7 +275,7 @@ class GameState {
    * Start a new wave of mooks
    * @param {Object} [config] - Wave configuration
    * @param {number} [config.count=10] - Number of mooks to spawn
-   * @param {string} [config.type='standard'] - Type of mooks
+   * @param {string} [config.type='standard'] - Type of mooks ('standard', 'armored', 'fast', 'tank')
    * @param {number} [config.delay=500] - Delay between spawns in milliseconds
    */
   startWave(config = {}) {
