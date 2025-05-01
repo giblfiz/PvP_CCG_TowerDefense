@@ -573,6 +573,7 @@
             constructor(width = 20, height = 15) {
                 this.width = width;
                 this.height = height;
+                this.numPaths = 3; // Number of paths to generate
                 
                 // Initialize grid
                 this.grid = [];
@@ -605,19 +606,117 @@
                     }
                 }
                 
-                // Create a spawn point on the left edge
-                const spawnY = Math.floor(Math.random() * this.height);
-                const spawnPoint = { x: 0, y: spawnY };
-                this.addSpawnPoint(spawnPoint.x, spawnPoint.y);
+                // Generate multiple paths
+                for (let i = 0; i < this.numPaths; i++) {
+                    this.generateSinglePath(i);
+                }
+            }
+            
+            generateSinglePath(pathIndex) {
+                // Calculate spawn and exit positions based on path index
+                let spawnPoint, exitPoint;
                 
-                // Create an exit point on the right edge
-                const exitY = Math.floor(Math.random() * this.height);
-                const exitPoint = { x: this.width - 1, y: exitY };
+                if (pathIndex === 0) {
+                    // Top path: spawn at left, exit at right
+                    const spawnY = Math.floor(this.height * 0.25);
+                    spawnPoint = { x: 0, y: spawnY };
+                    
+                    const exitY = Math.floor(this.height * 0.25);
+                    exitPoint = { x: this.width - 1, y: exitY };
+                } 
+                else if (pathIndex === 1) {
+                    // Middle path: spawn at left, exit at right
+                    const spawnY = Math.floor(this.height * 0.5);
+                    spawnPoint = { x: 0, y: spawnY };
+                    
+                    const exitY = Math.floor(this.height * 0.5);
+                    exitPoint = { x: this.width - 1, y: exitY };
+                }
+                else {
+                    // Bottom path: spawn at left, exit at right
+                    const spawnY = Math.floor(this.height * 0.75);
+                    spawnPoint = { x: 0, y: spawnY };
+                    
+                    const exitY = Math.floor(this.height * 0.75);
+                    exitPoint = { x: this.width - 1, y: exitY };
+                }
+                
+                // Add spawn and exit points
+                this.addSpawnPoint(spawnPoint.x, spawnPoint.y);
                 this.addExitPoint(exitPoint.x, exitPoint.y);
                 
-                // Generate path from spawn to exit
-                const path = this.findPath(spawnPoint, exitPoint);
+                // Generate path from spawn to exit with some complexity
+                const path = this.findComplexPath(spawnPoint, exitPoint, pathIndex);
                 this.addPath(path);
+                
+                return path;
+            }
+            
+            findComplexPath(start, end, pathIndex) {
+                // Create a more interesting path than just a straight line
+                const path = [];
+                path.push({ ...start });
+                
+                // Divide the width into segments for path complexity
+                const segments = 4;
+                const segmentWidth = this.width / segments;
+                
+                // Calculate waypoints based on path index
+                const waypoints = [];
+                
+                if (pathIndex === 0) {
+                    // Top path: moves right, then down, then right, then up, then right
+                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
+                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.5) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.5) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.25) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.25) });
+                } 
+                else if (pathIndex === 1) {
+                    // Middle path: moves right, then up, then right, then down, then right
+                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
+                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.25) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.25) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.75) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.75) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.5) });
+                }
+                else {
+                    // Bottom path: moves right, then up, then right, then up, then right
+                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
+                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.5) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.5) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.5) });
+                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.75) });
+                }
+                
+                // Add the end point
+                waypoints.push(end);
+                
+                // Connect all waypoints with straight lines
+                let current = { ...start };
+                
+                for (const waypoint of waypoints) {
+                    // Go to waypoint X first, then Y (no diagonals)
+                    while (current.x !== waypoint.x || current.y !== waypoint.y) {
+                        // Move horizontally first
+                        if (current.x < waypoint.x) {
+                            current.x += 1;
+                        } else if (current.x > waypoint.x) {
+                            current.x -= 1;
+                        }
+                        // Then move vertically
+                        else if (current.y < waypoint.y) {
+                            current.y += 1;
+                        } else if (current.y > waypoint.y) {
+                            current.y -= 1;
+                        }
+                        
+                        path.push({ ...current });
+                    }
+                }
+                
+                return path;
             }
             
             findPath(start, end) {
@@ -1083,6 +1182,10 @@
                 this.selectedTowerType = null;
                 this.placementPreview = null;
                 
+                // Projectiles
+                this.projectiles = [];
+                this.lastProjectileId = 0;
+                
                 // Game state
                 this.gameState = new GameState();
             }
@@ -1101,6 +1204,77 @@
                 
                 // Create range indicator texture
                 this.createRangeTexture();
+                
+                // Create projectile textures
+                this.createProjectileTextures();
+            }
+            
+            createProjectileTextures() {
+                // Basic projectile (blue bullet)
+                this.createBasicProjectileTexture('basic-projectile');
+                
+                // Sniper projectile (orange bullet)
+                this.createSniperProjectileTexture('sniper-projectile');
+                
+                // Splash projectile (red bomb)
+                this.createSplashProjectileTexture('splash-projectile');
+            }
+            
+            createBasicProjectileTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Blue bullet
+                graphics.fillStyle(0x3399ff);
+                graphics.fillCircle(8, 8, 5);
+                
+                // Highlight
+                graphics.fillStyle(0xaaddff);
+                graphics.fillCircle(6, 6, 2);
+                
+                // Generate texture
+                graphics.generateTexture(key, 16, 16);
+                graphics.clear();
+            }
+            
+            createSniperProjectileTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Orange bullet
+                graphics.fillStyle(0xff9900);
+                graphics.fillCircle(8, 8, 6);
+                
+                // Highlight
+                graphics.fillStyle(0xffcc66);
+                graphics.fillCircle(6, 6, 2);
+                
+                // Outline
+                graphics.lineStyle(1, 0xffcc00);
+                graphics.strokeCircle(8, 8, 6);
+                
+                // Generate texture
+                graphics.generateTexture(key, 16, 16);
+                graphics.clear();
+            }
+            
+            createSplashProjectileTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Red bomb shape
+                graphics.fillStyle(0xff3366);
+                graphics.fillCircle(10, 10, 8);
+                
+                // Top highlights
+                graphics.fillStyle(0xff99aa);
+                graphics.fillCircle(7, 7, 2);
+                
+                // Fuse
+                graphics.lineStyle(2, 0x666666);
+                graphics.moveTo(10, 3);
+                graphics.lineTo(14, 0);
+                
+                // Generate texture
+                graphics.generateTexture(key, 20, 20);
+                graphics.clear();
             }
             
             createCellTextures() {
@@ -1558,13 +1732,20 @@
             }
             
             startSpawningMooks() {
-                // Get the path
-                const path = this.tdMap.paths[0];
-                if (!path) return;
+                // Get all paths
+                const paths = this.tdMap.paths;
+                if (paths.length === 0) return;
+                
+                // Track which path to use next (for alternating spawns)
+                this.currentPathIndex = 0;
                 
                 // Function to spawn a mook
                 const spawnMook = () => {
                     if (!this.gameState.waveActive) return;
+                    
+                    // Select path to spawn on (alternate between paths)
+                    const path = paths[this.currentPathIndex];
+                    this.currentPathIndex = (this.currentPathIndex + 1) % paths.length;
                     
                     // Spawn a mook
                     const mook = this.gameState.spawnMook(path);
@@ -1572,6 +1753,13 @@
                     if (mook) {
                         // Create mook sprite
                         this.createMookSprite(mook);
+                        
+                        // Create a random path color for this mook
+                        mook.pathColor = Phaser.Display.Color.HSVToRGB(
+                            Math.random() * 360,
+                            0.7,
+                            1
+                        ).color;
                         
                         // Schedule next spawn if more mooks to spawn
                         if (this.gameState.mooksSpawned < this.gameState.waveConfig.mooksPerWave) {
@@ -1685,64 +1873,195 @@
                 const towerX = tower.gridX * this.cellSize + this.cellSize/2;
                 const towerY = tower.gridY * this.cellSize + this.cellSize/2;
                 
-                // Create attack line from tower to target
+                // Get target
                 const target = attackResult[0].mook;
                 const targetX = target.position.x * this.cellSize + this.cellSize/2;
                 const targetY = target.position.y * this.cellSize + this.cellSize/2;
                 
-                // Create line graphic
-                const line = this.add.graphics();
+                // Create projectile based on tower type
+                let projectileTexture;
+                let projectileScale = 1;
+                let projectileSpeed = 600; // pixels per second
+                let trailEffect = false;
                 
-                // Style based on tower type
-                let color;
-                let width;
                 switch(tower.type) {
                     case Tower.TOWER_SNIPER:
-                        color = 0xff9900; // Orange
-                        width = 3;
+                        projectileTexture = 'sniper-projectile';
+                        projectileScale = 1.5;
+                        projectileSpeed = 800; // faster bullet
+                        trailEffect = true;
                         break;
                     case Tower.TOWER_SPLASH:
-                        color = 0xff3366; // Pink/Red
-                        width = 4;
+                        projectileTexture = 'splash-projectile';
+                        projectileScale = 1.3;
+                        projectileSpeed = 400; // slower bomb
                         break;
                     default:
-                        color = 0x3399ff; // Blue
-                        width = 2;
+                        projectileTexture = 'basic-projectile';
+                        projectileScale = 1;
                 }
                 
-                // Draw line
-                line.lineStyle(width, color, 1);
-                line.beginPath();
-                line.moveTo(towerX, towerY);
-                line.lineTo(targetX, targetY);
-                line.strokePath();
+                // Create projectile sprite
+                const projectile = this.add.image(towerX, towerY, projectileTexture);
+                projectile.setScale(projectileScale);
+                projectile.setOrigin(0.5);
+                
+                // Store projectile data for reference
+                const projectileId = 'projectile_' + (++this.lastProjectileId);
+                this.projectiles.push({
+                    id: projectileId,
+                    sprite: projectile,
+                    target: target,
+                    tower: tower,
+                    attackResult: attackResult,
+                    startX: towerX,
+                    startY: towerY,
+                    targetX: targetX,
+                    targetY: targetY
+                });
+                
+                // Add projectile to effects container
+                this.effectsContainer.add(projectile);
+                
+                // Set up trail effect for sniper projectile
+                if (trailEffect) {
+                    this.time.addEvent({
+                        delay: 20, // 20ms per trail particle
+                        repeat: Math.floor(projectileSpeed / 100), // Roughly how long the projectile will travel
+                        callback: () => {
+                            if (!projectile || !projectile.active) return;
+                            
+                            // Create a trail particle
+                            const trail = this.add.circle(
+                                projectile.x, 
+                                projectile.y, 
+                                3, 
+                                tower.type === Tower.TOWER_SNIPER ? 0xffcc00 : 0x66aaff
+                            );
+                            
+                            // Add to effects container
+                            this.effectsContainer.add(trail);
+                            
+                            // Fade out and remove
+                            this.tweens.add({
+                                targets: trail,
+                                alpha: 0,
+                                scale: 0.5,
+                                duration: 300,
+                                onComplete: () => {
+                                    trail.destroy();
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Calculate distance and duration for tween
+                const distance = Phaser.Math.Distance.Between(towerX, towerY, targetX, targetY);
+                const duration = distance / projectileSpeed * 1000; // in ms
+                
+                // Calculate rotation angle for projectile
+                const angle = Phaser.Math.Angle.Between(towerX, towerY, targetX, targetY);
+                projectile.setRotation(angle + Math.PI/2); // Adjust based on projectile texture
+                
+                // Tween projectile to target
+                this.tweens.add({
+                    targets: projectile,
+                    x: targetX,
+                    y: targetY,
+                    duration: duration,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        // Create impact effect
+                        this.createImpactEffect(tower, target, attackResult);
+                        
+                        // Remove projectile
+                        projectile.destroy();
+                        
+                        // Remove from projectiles array
+                        this.projectiles = this.projectiles.filter(p => p.id !== projectileId);
+                    }
+                });
+            }
+            
+            createImpactEffect(tower, target, attackResult) {
+                // Get target position
+                const targetX = target.position.x * this.cellSize + this.cellSize/2;
+                const targetY = target.position.y * this.cellSize + this.cellSize/2;
+                
+                // Create impact effect based on tower type
+                let impactColor;
+                let impactSize;
+                
+                switch(tower.type) {
+                    case Tower.TOWER_SNIPER:
+                        impactColor = 0xff9900; // Orange
+                        impactSize = 10;
+                        break;
+                    case Tower.TOWER_SPLASH:
+                        impactColor = 0xff3366; // Pink/Red
+                        impactSize = 15;
+                        break;
+                    default:
+                        impactColor = 0x3399ff; // Blue
+                        impactSize = 8;
+                }
+                
+                // Create impact flash
+                const impact = this.add.circle(targetX, targetY, impactSize, impactColor, 0.8);
+                
+                // Add to effects container
+                this.effectsContainer.add(impact);
+                
+                // Fade out and scale up the impact
+                this.tweens.add({
+                    targets: impact,
+                    alpha: 0,
+                    scale: 2,
+                    duration: 200,
+                    onComplete: () => {
+                        impact.destroy();
+                    }
+                });
                 
                 // Add splash effect for splash tower
                 if (tower.type === Tower.TOWER_SPLASH && tower.splashRadius > 0) {
+                    // Create explosion
+                    const explosion = this.add.text(
+                        targetX,
+                        targetY,
+                        '💥',
+                        { fontSize: '40px' }
+                    );
+                    explosion.setOrigin(0.5);
+                    this.effectsContainer.add(explosion);
+                    
+                    // Scale up and fade out
+                    this.tweens.add({
+                        targets: explosion,
+                        scale: 2,
+                        alpha: 0,
+                        duration: 500,
+                        onComplete: () => {
+                            explosion.destroy();
+                        }
+                    });
+                    
                     // Draw splash circle
-                    const splash = this.add.circle(targetX, targetY, tower.splashRadius * this.cellSize * 0.5, color, 0.3);
+                    const splash = this.add.circle(targetX, targetY, tower.splashRadius * this.cellSize * 0.5, impactColor, 0.3);
+                    this.effectsContainer.add(splash);
                     
                     // Fade out and scale down the splash
                     this.tweens.add({
                         targets: splash,
                         alpha: 0,
-                        scale: 0.5,
+                        scale: 1.5,
                         duration: 300,
                         onComplete: () => {
                             splash.destroy();
                         }
                     });
                 }
-                
-                // Fade out the line
-                this.tweens.add({
-                    targets: line,
-                    alpha: 0,
-                    duration: 200,
-                    onComplete: () => {
-                        line.destroy();
-                    }
-                });
                 
                 // Add damage effect on the target
                 for (const result of attackResult) {
@@ -1759,22 +2078,50 @@
                         
                         // If mook is killed, show explosion
                         if (result.isDead) {
-                            const explosion = this.add.text(
+                            const deathExplosion = this.add.text(
                                 mook.position.x * this.cellSize + this.cellSize/2,
                                 mook.position.y * this.cellSize + this.cellSize/2,
                                 '💥',
                                 { fontSize: '40px' }
                             );
-                            explosion.setOrigin(0.5);
+                            deathExplosion.setOrigin(0.5);
+                            this.effectsContainer.add(deathExplosion);
                             
                             // Scale up and fade out
                             this.tweens.add({
-                                targets: explosion,
+                                targets: deathExplosion,
                                 scale: 2,
                                 alpha: 0,
                                 duration: 500,
                                 onComplete: () => {
-                                    explosion.destroy();
+                                    deathExplosion.destroy();
+                                }
+                            });
+                            
+                            // Add gold indicator
+                            const goldText = this.add.text(
+                                mook.position.x * this.cellSize + this.cellSize/2,
+                                mook.position.y * this.cellSize,
+                                '+' + mook.reward + '💰',
+                                { 
+                                    fontSize: '20px',
+                                    stroke: '#000000',
+                                    strokeThickness: 3,
+                                    fontWeight: 'bold',
+                                    color: '#ffff00'
+                                }
+                            );
+                            goldText.setOrigin(0.5);
+                            this.effectsContainer.add(goldText);
+                            
+                            // Float up and fade out
+                            this.tweens.add({
+                                targets: goldText,
+                                y: goldText.y - 50,
+                                alpha: 0,
+                                duration: 1000,
+                                onComplete: () => {
+                                    goldText.destroy();
                                 }
                             });
                         }
