@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tower Defense Map Demo</title>
+    <title>Phaser Tower Defense Map Demo</title>
     <style>
         body {
             margin: 0;
@@ -18,7 +18,7 @@
             overflow: hidden;
         }
         
-        #info-panel {
+        #version-info {
             position: fixed;
             top: 10px;
             left: 10px;
@@ -30,7 +30,7 @@
             font-size: 14px;
         }
         
-        #help-panel {
+        #controls-panel {
             position: fixed;
             top: 10px;
             right: 10px;
@@ -43,67 +43,9 @@
             text-align: right;
         }
         
-        #hud-panel {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            color: #ffffff;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 8px 12px;
-            border-radius: 4px;
-            z-index: 100;
-            font-size: 16px;
-            display: flex;
-            flex-direction: column;
-            min-width: 200px;
-        }
-        
-        #tower-selection {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 8px;
-            border-radius: 4px;
-            z-index: 100;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .tower-button {
-            width: 60px;
-            height: 60px;
-            background-color: #555;
-            border: 2px solid #888;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: white;
-            font-size: 24px;
-            transition: all 0.2s ease;
-        }
-        
-        .tower-button:hover {
-            border-color: #aaa;
-            background-color: #666;
-        }
-        
-        .tower-button.selected {
-            border-color: #ffcc00;
-            background-color: #775500;
-        }
-        
-        .tower-cost {
-            font-size: 12px;
-            margin-top: 2px;
-        }
-        
         #error-display {
             position: fixed;
-            bottom: 80px;
+            bottom: 10px;
             left: 10px;
             right: 10px;
             max-height: 150px;
@@ -116,75 +58,19 @@
             z-index: 1000;
             display: none;
         }
-        
-        .stat {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }
-        
-        .stat-value {
-            font-weight: bold;
-            min-width: 80px;
-            text-align: right;
-        }
-
-        @media (max-width: 768px) {
-            #info-panel, #help-panel {
-                font-size: 12px;
-                padding: 5px 8px;
-            }
-            
-            .tower-button {
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
-        }
     </style>
 </head>
 <body>
-    <div id="info-panel">Tower Defense Map Demo</div>
-    <div id="help-panel">
-        📌 Drag to pan<br>
-        🔍 Pinch/scroll to zoom<br>
-        🏗️ Click to place towers
+    <div id="version-info">Tower Defense Map Demo</div>
+    <div id="controls-panel">
+        <button id="start-wave-button">Start Wave</button>
+        <div id="tower-selector">
+            <button class="tower-option" data-type="basic">Basic Tower</button>
+            <button class="tower-option" data-type="fast">Fast Tower</button>
+            <button class="tower-option" data-type="aoe">AoE Tower</button>
+        </div>
     </div>
     <div id="game-container"></div>
-    
-    <div id="hud-panel">
-        <div class="stat">
-            <span class="stat-label">Gold:</span>
-            <span class="stat-value" id="gold-value">600</span>
-        </div>
-        <div class="stat">
-            <span class="stat-label">Lives:</span>
-            <span class="stat-value" id="lives-value">20</span>
-        </div>
-        <div class="stat">
-            <span class="stat-label">Wave:</span>
-            <span class="stat-value" id="wave-value">0</span>
-        </div>
-        <div class="stat">
-            <button id="wave-button" style="width: 100%; padding: 5px; margin-top: 5px; cursor: pointer;">Start Wave</button>
-        </div>
-    </div>
-    
-    <div id="tower-selection">
-        <div class="tower-button" data-type="basic" data-cost="50">
-            🗼
-            <div class="tower-cost">50</div>
-        </div>
-        <div class="tower-button" data-type="sniper" data-cost="100">
-            🏯
-            <div class="tower-cost">100</div>
-        </div>
-        <div class="tower-button" data-type="splash" data-cost="150">
-            🏰
-            <div class="tower-cost">150</div>
-        </div>
-    </div>
-    
     <div id="error-display"></div>
 
     <!-- Error handling script -->
@@ -251,2355 +137,719 @@
             console.log('Phaser loaded successfully:', Phaser.VERSION);
         }
     
-        /**
-         * Mook class definition
-         */
-        class Mook {
-            static MOOK_STANDARD = 'standard';
-            static MOOK_FAST = 'fast';
-            static MOOK_ARMORED = 'armored';
-            static MOOK_TANK = 'tank';
-            
-            constructor(type, path) {
-                this.type = type;
-                this.path = [...path];
-                this.currentPathIndex = 0;
-                this.position = { ...this.path[0] };
-                this.progress = 0;
-                this.active = true;
-                this.reachedEnd = false;
-                
-                // Set stats based on mook type
-                switch(type) {
-                    case Mook.MOOK_FAST:
-                        this.maxHealth = 80;
-                        this.health = 80;
-                        this.speed = 1.5;
-                        this.reward = 10;
-                        this.damage = 1;
-                        this.emoji = '🚀';
-                        break;
-                    case Mook.MOOK_ARMORED:
-                        this.maxHealth = 150;
-                        this.health = 150;
-                        this.speed = 0.9;
-                        this.reward = 20;
-                        this.damage = 1;
-                        this.emoji = '🛡️';
-                        break;
-                    case Mook.MOOK_TANK:
-                        this.maxHealth = 300;
-                        this.health = 300;
-                        this.speed = 0.7;
-                        this.reward = 30;
-                        this.damage = 2;
-                        this.emoji = '🦖';
-                        break;
-                    default: // Standard
-                        this.maxHealth = 100;
-                        this.health = 100;
-                        this.speed = 1.0;
-                        this.reward = 15;
-                        this.damage = 1;
-                        this.emoji = '👾';
-                }
-            }
-            
-            update(deltaTime) {
-                if (!this.active || this.reachedEnd) return false;
-                
-                // Calculate progress along current path segment
-                this.progress += this.speed * deltaTime;
-                
-                // Check if we've reached the next path point
-                if (this.currentPathIndex < this.path.length - 1) {
-                    const nextPoint = this.path[this.currentPathIndex + 1];
-                    const currentPoint = this.path[this.currentPathIndex];
-                    
-                    // Calculate distance between points (Manhattan distance since we move on a grid)
-                    const distance = Math.abs(nextPoint.x - currentPoint.x) + Math.abs(nextPoint.y - currentPoint.y);
-                    
-                    // If progress exceeds distance, move to next path segment
-                    if (this.progress >= distance) {
-                        this.currentPathIndex++;
-                        this.progress = 0;
-                        
-                        // If we reached the last point, mark as reached end
-                        if (this.currentPathIndex >= this.path.length - 1) {
-                            this.reachedEnd = true;
-                            return true; // Reached the end
-                        }
-                    }
-                }
-                
-                // Update position based on progress
-                const currentPoint = this.path[this.currentPathIndex];
-                const nextPoint = this.path[this.currentPathIndex + 1];
-                
-                if (nextPoint) {
-                    // Interpolate position between current and next point
-                    const progress = Math.min(1, this.progress);
-                    
-                    if (nextPoint.x !== currentPoint.x) {
-                        // Moving horizontally
-                        const direction = nextPoint.x > currentPoint.x ? 1 : -1;
-                        this.position.x = currentPoint.x + direction * progress;
-                        this.position.y = currentPoint.y;
-                    } else {
-                        // Moving vertically
-                        const direction = nextPoint.y > currentPoint.y ? 1 : -1;
-                        this.position.x = currentPoint.x;
-                        this.position.y = currentPoint.y + direction * progress;
-                    }
-                }
-                
-                return false; // Not reached the end yet
-            }
-            
-            takeDamage(amount) {
-                this.health -= amount;
-                if (this.health <= 0) {
-                    this.active = false;
-                    return true; // Died
-                }
-                return false; // Still alive
-            }
-            
-            getHealthPercent() {
-                return Math.max(0, Math.min(1, this.health / this.maxHealth));
-            }
-        }
-        
-        /**
-         * Tower class definition
-         */
-        class Tower {
-            static TOWER_BASIC = 'basic';
-            static TOWER_SNIPER = 'sniper';
-            static TOWER_SPLASH = 'splash';
-            
-            constructor(type, gridX, gridY) {
-                this.type = type;
-                this.gridX = gridX;
-                this.gridY = gridY;
-                this.level = 1;
-                this.target = null;
-                
-                // Set stats based on tower type
-                switch(type) {
-                    case Tower.TOWER_BASIC:
-                        this.damage = 20;
-                        this.range = 3;
-                        this.fireRate = 1;
-                        this.cost = 50;
-                        this.upgradeCost = 40;
-                        this.emoji = '🗼';
-                        this.splashRadius = 0;
-                        break;
-                    case Tower.TOWER_SNIPER:
-                        this.damage = 50;
-                        this.range = 6;
-                        this.fireRate = 0.5;
-                        this.cost = 100;
-                        this.upgradeCost = 80;
-                        this.emoji = '🏯';
-                        this.splashRadius = 0;
-                        break;
-                    case Tower.TOWER_SPLASH:
-                        this.damage = 15;
-                        this.range = 2;
-                        this.fireRate = 0.8;
-                        this.cost = 150;
-                        this.upgradeCost = 120;
-                        this.emoji = '🏰';
-                        this.splashRadius = 1; // Splash radius in grid cells
-                        break;
-                    default:
-                        this.damage = 10;
-                        this.range = 2;
-                        this.fireRate = 1;
-                        this.cost = 50;
-                        this.upgradeCost = 40;
-                        this.emoji = '🗼';
-                        this.splashRadius = 0;
-                }
-                
-                this.lastFired = 0;
-            }
-            
-            upgrade() {
-                this.level++;
-                this.damage *= 1.5;
-                this.range += 0.5;
-                this.fireRate *= 1.2;
-                this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
-            }
-            
-            canFire(time) {
-                return time - this.lastFired >= 1000 / this.fireRate;
-            }
-            
-            fire(time) {
-                this.lastFired = time;
-                return this.damage;
-            }
-            
-            isInRange(mook, cellSize) {
-                const towerX = this.gridX * cellSize + cellSize/2;
-                const towerY = this.gridY * cellSize + cellSize/2;
-                const mookX = mook.position.x * cellSize + cellSize/2;
-                const mookY = mook.position.y * cellSize + cellSize/2;
-                
-                const distance = Phaser.Math.Distance.Between(towerX, towerY, mookX, mookY);
-                return distance <= this.range * cellSize;
-            }
-            
-            findTarget(mooks, cellSize) {
-                // Find all mooks in range
-                const inRangeMooks = mooks.filter(mook => 
-                    mook.active && !mook.reachedEnd && this.isInRange(mook, cellSize)
-                );
-                
-                if (inRangeMooks.length === 0) {
-                    this.target = null;
-                    return null;
-                }
-                
-                // Different target selection based on tower type
-                switch(this.type) {
-                    case Tower.TOWER_SNIPER:
-                        // Sniper targets the one with the most health
-                        this.target = inRangeMooks.reduce((prev, current) => 
-                            (prev.health > current.health) ? prev : current
-                        );
-                        break;
-                        
-                    case Tower.TOWER_SPLASH:
-                        // Splash tower targets the one with most neighbors 
-                        // for maximum splash damage
-                        let maxNeighbors = 0;
-                        let bestTarget = inRangeMooks[0];
-                        
-                        for (const mook of inRangeMooks) {
-                            const neighbors = inRangeMooks.filter(other => {
-                                if (other === mook) return false;
-                                
-                                const dx = Math.abs(other.position.x - mook.position.x);
-                                const dy = Math.abs(other.position.y - mook.position.y);
-                                return dx <= this.splashRadius && dy <= this.splashRadius;
-                            }).length;
-                            
-                            if (neighbors > maxNeighbors) {
-                                maxNeighbors = neighbors;
-                                bestTarget = mook;
-                            }
-                        }
-                        
-                        this.target = bestTarget;
-                        break;
-                        
-                    default: // Basic tower and others
-                        // Target the furthest along the path
-                        this.target = inRangeMooks.reduce((prev, current) => 
-                            (current.currentPathIndex > prev.currentPathIndex || 
-                             (current.currentPathIndex === prev.currentPathIndex && 
-                              current.progress > prev.progress)) ? current : prev
-                        );
-                }
-                
-                return this.target;
-            }
-            
-            attackTarget(time, mooks, cellSize) {
-                if (!this.canFire(time)) return null;
-                
-                const target = this.findTarget(mooks, cellSize);
-                if (!target) return null;
-                
-                // Fire the tower
-                const damage = this.fire(time);
-                
-                // Handle splash damage
-                if (this.splashRadius > 0) {
-                    // Get all mooks in splash radius
-                    const splashedMooks = mooks.filter(mook => {
-                        if (!mook.active || mook.reachedEnd) return false;
-                        if (mook === target) return true; // Direct target always gets hit
-                        
-                        const dx = Math.abs(mook.position.x - target.position.x);
-                        const dy = Math.abs(mook.position.y - target.position.y);
-                        return dx <= this.splashRadius && dy <= this.splashRadius;
-                    });
-                    
-                    // Apply damage to all mooks in splash radius
-                    const results = [];
-                    for (const mook of splashedMooks) {
-                        const distanceRatio = mook === target ? 1 : 0.5; // Reduced damage for splash
-                        const isDead = mook.takeDamage(damage * distanceRatio);
-                        if (isDead) {
-                            results.push({
-                                mook,
-                                isDead: true
-                            });
-                        } else {
-                            results.push({
-                                mook,
-                                isDead: false
-                            });
-                        }
-                    }
-                    return results;
-                } else {
-                    // Direct damage to single target
-                    const isDead = target.takeDamage(damage);
-                    return [{
-                        mook: target,
-                        isDead
-                    }];
-                }
-            }
-        }
-    
-        /**
-         * Map definition
-         */
-        class TDMap {
-            static CELL_EMPTY = 0;
-            static CELL_PATH = 1;
-            static CELL_SPAWN = 2;
-            static CELL_EXIT = 3;
-            static CELL_TOWER = 4;
-            
-            constructor(width = 20, height = 15) {
-                this.width = width;
-                this.height = height;
-                this.numPaths = 3; // Number of paths to generate
-                
-                // Initialize grid
-                this.grid = [];
-                for (let x = 0; x < this.width; x++) {
-                    this.grid[x] = [];
-                    for (let y = 0; y < this.height; y++) {
-                        this.grid[x][y] = TDMap.CELL_EMPTY;
-                    }
-                }
-                
-                // Initialize paths, spawn points, and exit points
-                this.paths = [];
-                this.spawnPoints = [];
-                this.exitPoints = [];
-                
-                // Generate a default map
-                this.generateMap();
-            }
-            
-            generateMap() {
-                // Clear existing data
-                this.paths = [];
-                this.spawnPoints = [];
-                this.exitPoints = [];
-                
-                // Reset grid to empty
-                for (let x = 0; x < this.width; x++) {
-                    for (let y = 0; y < this.height; y++) {
-                        this.grid[x][y] = TDMap.CELL_EMPTY;
-                    }
-                }
-                
-                // Generate multiple paths
-                for (let i = 0; i < this.numPaths; i++) {
-                    this.generateSinglePath(i);
-                }
-            }
-            
-            generateSinglePath(pathIndex) {
-                // Calculate spawn and exit positions based on path index
-                let spawnPoint, exitPoint;
-                
-                if (pathIndex === 0) {
-                    // Top path: spawn at left, exit at right
-                    const spawnY = Math.floor(this.height * 0.25);
-                    spawnPoint = { x: 0, y: spawnY };
-                    
-                    const exitY = Math.floor(this.height * 0.25);
-                    exitPoint = { x: this.width - 1, y: exitY };
-                } 
-                else if (pathIndex === 1) {
-                    // Middle path: spawn at left, exit at right
-                    const spawnY = Math.floor(this.height * 0.5);
-                    spawnPoint = { x: 0, y: spawnY };
-                    
-                    const exitY = Math.floor(this.height * 0.5);
-                    exitPoint = { x: this.width - 1, y: exitY };
-                }
-                else {
-                    // Bottom path: spawn at left, exit at right
-                    const spawnY = Math.floor(this.height * 0.75);
-                    spawnPoint = { x: 0, y: spawnY };
-                    
-                    const exitY = Math.floor(this.height * 0.75);
-                    exitPoint = { x: this.width - 1, y: exitY };
-                }
-                
-                // Add spawn and exit points
-                this.addSpawnPoint(spawnPoint.x, spawnPoint.y);
-                this.addExitPoint(exitPoint.x, exitPoint.y);
-                
-                // Generate path from spawn to exit with some complexity
-                const path = this.findComplexPath(spawnPoint, exitPoint, pathIndex);
-                this.addPath(path);
-                
-                return path;
-            }
-            
-            findComplexPath(start, end, pathIndex) {
-                // Create a more interesting path than just a straight line
-                const path = [];
-                path.push({ ...start });
-                
-                // Divide the width into segments for path complexity
-                const segments = 4;
-                const segmentWidth = this.width / segments;
-                
-                // Calculate waypoints based on path index
-                const waypoints = [];
-                
-                if (pathIndex === 0) {
-                    // Top path: moves right, then down, then right, then up, then right
-                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
-                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.5) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.5) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.25) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.25) });
-                } 
-                else if (pathIndex === 1) {
-                    // Middle path: moves right, then up, then right, then down, then right
-                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
-                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.25) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.25) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.75) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.75) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.5) });
-                }
-                else {
-                    // Bottom path: moves right, then up, then right, then up, then right
-                    waypoints.push({ x: Math.floor(segmentWidth), y: start.y });
-                    waypoints.push({ x: Math.floor(segmentWidth), y: Math.floor(this.height * 0.5) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 2), y: Math.floor(this.height * 0.5) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.5) });
-                    waypoints.push({ x: Math.floor(segmentWidth * 3), y: Math.floor(this.height * 0.75) });
-                }
-                
-                // Add the end point
-                waypoints.push(end);
-                
-                // Connect all waypoints with straight lines
-                let current = { ...start };
-                
-                for (const waypoint of waypoints) {
-                    // Go to waypoint X first, then Y (no diagonals)
-                    while (current.x !== waypoint.x || current.y !== waypoint.y) {
-                        // Move horizontally first
-                        if (current.x < waypoint.x) {
-                            current.x += 1;
-                        } else if (current.x > waypoint.x) {
-                            current.x -= 1;
-                        }
-                        // Then move vertically
-                        else if (current.y < waypoint.y) {
-                            current.y += 1;
-                        } else if (current.y > waypoint.y) {
-                            current.y -= 1;
-                        }
-                        
-                        path.push({ ...current });
-                    }
-                }
-                
-                return path;
-            }
-            
-            findPath(start, end) {
-                const path = [];
-                let current = { ...start };
-                path.push({ ...current });
-                
-                // Simple path algorithm - go horizontal first, then vertical
-                while (current.x !== end.x || current.y !== end.y) {
-                    // Move horizontally first
-                    if (current.x < end.x) {
-                        current.x += 1;
-                    } else if (current.x > end.x) {
-                        current.x -= 1;
-                    }
-                    // Then move vertically
-                    else if (current.y < end.y) {
-                        current.y += 1;
-                    } else if (current.y > end.y) {
-                        current.y -= 1;
-                    }
-                    
-                    path.push({ ...current });
-                }
-                
-                return path;
-            }
-            
-            addSpawnPoint(x, y) {
-                if (!this.isValidPosition(x, y)) {
-                    return false;
-                }
-                
-                this.spawnPoints.push({ x, y });
-                this.grid[x][y] = TDMap.CELL_SPAWN;
-                return true;
-            }
-            
-            addExitPoint(x, y) {
-                if (!this.isValidPosition(x, y)) {
-                    return false;
-                }
-                
-                this.exitPoints.push({ x, y });
-                this.grid[x][y] = TDMap.CELL_EXIT;
-                return true;
-            }
-            
-            addPath(path) {
-                // Verify path
-                if (!Array.isArray(path) || path.length < 2) {
-                    return false;
-                }
-                
-                // Add path to map
-                this.paths.push([...path]);
-                
-                // Mark all path cells in grid
-                for (let i = 0; i < path.length; i++) {
-                    const { x, y } = path[i];
-                    if (this.isValidPosition(x, y)) {
-                        // Skip overwriting spawn and exit points
-                        if (this.grid[x][y] !== TDMap.CELL_SPAWN && this.grid[x][y] !== TDMap.CELL_EXIT) {
-                            this.grid[x][y] = TDMap.CELL_PATH;
-                        }
-                    }
-                }
-                
-                return true;
-            }
-            
-            isValidPosition(x, y) {
-                return x >= 0 && x < this.width && y >= 0 && y < this.height;
-            }
-            
-            getCellValue(x, y) {
-                if (!this.isValidPosition(x, y)) {
-                    return -1;
-                }
-                
-                return this.grid[x][y];
-            }
-            
-            canPlaceTower(x, y) {
-                if (!this.isValidPosition(x, y)) {
-                    return false;
-                }
-                
-                // Can only place towers on empty cells
-                return this.grid[x][y] === TDMap.CELL_EMPTY;
-            }
-            
-            placeTower(x, y) {
-                if (!this.canPlaceTower(x, y)) {
-                    return false;
-                }
-                
-                this.grid[x][y] = TDMap.CELL_TOWER;
-                return true;
-            }
-            
-            removeTower(x, y) {
-                if (!this.isValidPosition(x, y)) {
-                    return false;
-                }
-                
-                if (this.grid[x][y] === TDMap.CELL_TOWER) {
-                    this.grid[x][y] = TDMap.CELL_EMPTY;
-                    return true;
-                }
-                
-                return false;
-            }
-        }
-        
-        /**
-         * Game state
-         */
-        class GameState {
+        class TowerDefenseMap extends Phaser.Scene {
             constructor() {
-                this.gold = 600;
-                this.lives = 20;
-                this.wave = 0;
+                super('TowerDefenseMap');
+                this.mapConfig = {
+                    width: 20,
+                    height: 15,
+                    tileSize: 40
+                };
                 this.towers = [];
                 this.mooks = [];
-                this.waveActive = false;
-                this.waveTimer = null;
-                this.gameOver = false;
-                this.mooksSpawned = 0;
-                this.mooksKilled = 0;
-                this.mooksLeaked = 0;
+                this.paths = [];
+                this.waveNumber = 0;
+                this.resources = 100;
+                this.lives = 20;
+                this.selectedTowerType = 'basic';
+                this.isWaveInProgress = false;
+            }
+            
+            preload() {
+                // Create textures programmatically
+                this.createMapTextures();
+                this.createTowerTextures();
+                this.createMookTextures();
+            }
+            
+            createMapTextures() {
+                // Create grass texture
+                const grassGraphics = this.add.graphics();
+                grassGraphics.fillStyle(0x33aa33);
+                grassGraphics.fillRect(0, 0, 40, 40);
+                grassGraphics.generateTexture('grass', 40, 40);
+                grassGraphics.clear();
                 
-                // Wave configuration
-                this.waveConfig = {
-                    spawnDelay: 1000, // ms between spawns
-                    mooksPerWave: 10, // base number of mooks per wave
-                    mookTypes: [
-                        { type: Mook.MOOK_STANDARD, weight: 100 },
-                        { type: Mook.MOOK_FAST, weight: 0 },
-                        { type: Mook.MOOK_ARMORED, weight: 0 },
-                        { type: Mook.MOOK_TANK, weight: 0 }
-                    ],
-                    // Define when special mooks appear
-                    specialMooks: {
-                        [Mook.MOOK_FAST]: 2, // Fast mooks appear at wave 2
-                        [Mook.MOOK_ARMORED]: 3, // Armored mooks appear at wave 3
-                        [Mook.MOOK_TANK]: 5 // Tank mooks appear at wave 5
-                    },
-                    maxWaves: 10
-                };
+                // Create path texture
+                const pathGraphics = this.add.graphics();
+                pathGraphics.fillStyle(0xddbb88);
+                pathGraphics.fillRect(0, 0, 40, 40);
+                pathGraphics.generateTexture('path', 40, 40);
+                pathGraphics.clear();
                 
-                // Update UI
-                this.updateUI();
-            }
-            
-            addGold(amount) {
-                this.gold += amount;
-                this.updateUI();
-            }
-            
-            spendGold(amount) {
-                if (this.gold >= amount) {
-                    this.gold -= amount;
-                    this.updateUI();
-                    return true;
-                }
-                return false;
-            }
-            
-            reduceLives(amount) {
-                this.lives -= amount;
-                this.updateUI();
+                // Create spawn point texture
+                const spawnGraphics = this.add.graphics();
+                spawnGraphics.fillStyle(0x00aa00);
+                spawnGraphics.fillRect(0, 0, 40, 40);
+                spawnGraphics.generateTexture('spawn', 40, 40);
+                spawnGraphics.clear();
                 
-                if (this.lives <= 0) {
-                    this.gameOver = true;
-                    this.endWave();
-                    
-                    // Show game over message
-                    const infoPanel = document.getElementById('info-panel');
-                    infoPanel.textContent = 'GAME OVER! You reached wave ' + this.wave;
-                    infoPanel.style.color = '#ff5555';
-                    infoPanel.style.fontWeight = 'bold';
-                    
-                    // Disable wave button
-                    document.getElementById('wave-button').textContent = 'Game Over';
-                    document.getElementById('wave-button').disabled = true;
-                }
+                // Create exit point texture
+                const exitGraphics = this.add.graphics();
+                exitGraphics.fillStyle(0xaa0000);
+                exitGraphics.fillRect(0, 0, 40, 40);
+                exitGraphics.generateTexture('exit', 40, 40);
+                exitGraphics.clear();
             }
             
-            startWave() {
-                if (this.gameOver) return false;
-                if (!this.waveActive) {
-                    this.wave++;
-                    this.waveActive = true;
-                    this.mooksSpawned = 0;
-                    this.mooksKilled = 0;
-                    this.mooksLeaked = 0;
-                    this.mooks = [];
-                    
-                    // Add bonus gold for starting a wave
-                    this.addGold(25);
-                    
-                    // Update wave configuration based on wave number
-                    this.updateWaveConfig();
-                    
-                    // Update UI
-                    this.updateUI();
-                    
-                    return true;
-                }
-                return false;
+            createTowerTextures() {
+                // Basic tower
+                const basicTowerGraphics = this.add.graphics();
+                basicTowerGraphics.fillStyle(0x0044aa);
+                basicTowerGraphics.fillCircle(20, 20, 15);
+                basicTowerGraphics.generateTexture('basic-tower', 40, 40);
+                basicTowerGraphics.clear();
+                
+                // Fast tower
+                const fastTowerGraphics = this.add.graphics();
+                fastTowerGraphics.fillStyle(0x00aaaa);
+                fastTowerGraphics.fillCircle(20, 20, 15);
+                fastTowerGraphics.generateTexture('fast-tower', 40, 40);
+                fastTowerGraphics.clear();
+                
+                // AoE tower
+                const aoeTowerGraphics = this.add.graphics();
+                aoeTowerGraphics.fillStyle(0xaa44aa);
+                aoeTowerGraphics.fillCircle(20, 20, 15);
+                aoeTowerGraphics.generateTexture('aoe-tower', 40, 40);
+                aoeTowerGraphics.clear();
+                
+                // Tower range indicator
+                const rangeGraphics = this.add.graphics();
+                rangeGraphics.lineStyle(2, 0xffffff, 0.5);
+                rangeGraphics.strokeCircle(60, 60, 60);
+                rangeGraphics.generateTexture('tower-range', 120, 120);
+                rangeGraphics.clear();
             }
             
-            updateWaveConfig() {
-                // Update mook type weights based on wave number
-                this.waveConfig.mookTypes.forEach(mookType => {
-                    if (mookType.type === Mook.MOOK_STANDARD) {
-                        // Standard mooks always present but decrease in later waves
-                        mookType.weight = Math.max(10, 100 - this.wave * 10);
-                    } else if (mookType.type === Mook.MOOK_FAST && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_FAST]) {
-                        // Fast mooks appear at wave 2 and increase
-                        mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_FAST] + 1) * 20;
-                    } else if (mookType.type === Mook.MOOK_ARMORED && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_ARMORED]) {
-                        // Armored mooks appear at wave 3 and increase
-                        mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_ARMORED] + 1) * 15;
-                    } else if (mookType.type === Mook.MOOK_TANK && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_TANK]) {
-                        // Tank mooks appear at wave 5 and increase slowly
-                        mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_TANK] + 1) * 10;
+            createMookTextures() {
+                // Standard mook
+                const standardMookGraphics = this.add.graphics();
+                standardMookGraphics.fillStyle(0xff0000);
+                standardMookGraphics.fillCircle(15, 15, 10);
+                standardMookGraphics.generateTexture('standard-mook', 30, 30);
+                standardMookGraphics.clear();
+                
+                // Fast mook
+                const fastMookGraphics = this.add.graphics();
+                fastMookGraphics.fillStyle(0xff8800);
+                fastMookGraphics.fillCircle(12, 12, 8);
+                fastMookGraphics.generateTexture('fast-mook', 24, 24);
+                fastMookGraphics.clear();
+                
+                // Armored mook
+                const armoredMookGraphics = this.add.graphics();
+                armoredMookGraphics.fillStyle(0x888888);
+                armoredMookGraphics.fillCircle(18, 18, 12);
+                armoredMookGraphics.generateTexture('armored-mook', 36, 36);
+                armoredMookGraphics.clear();
+                
+                // Tank mook
+                const tankMookGraphics = this.add.graphics();
+                tankMookGraphics.fillStyle(0x444444);
+                tankMookGraphics.fillCircle(20, 20, 15);
+                tankMookGraphics.generateTexture('tank-mook', 40, 40);
+                tankMookGraphics.clear();
+            }
+            
+            create() {
+                // Create map
+                this.createMap();
+                
+                // Set up UI
+                this.setupUI();
+                
+                // Set up input handlers
+                this.setupInputHandlers();
+                
+                // Start game loop
+                this.lastUpdateTime = this.time.now;
+            }
+            
+            createMap() {
+                // Create tile map
+                this.mapTiles = [];
+                
+                // Fill map with grass
+                for (let y = 0; y < this.mapConfig.height; y++) {
+                    this.mapTiles[y] = [];
+                    for (let x = 0; x < this.mapConfig.width; x++) {
+                        const tile = this.add.image(
+                            x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                            y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                            'grass'
+                        );
+                        this.mapTiles[y][x] = {
+                            sprite: tile,
+                            type: 'grass',
+                            x: x,
+                            y: y,
+                            hasTower: false
+                        };
+                    }
+                }
+                
+                // Create paths
+                this.createPaths();
+            }
+            
+            createPaths() {
+                // Create two paths from left to right
+                const path1 = this.createSinglePath(0, 3, this.mapConfig.width - 1, 3);
+                const path2 = this.createSinglePath(0, 10, this.mapConfig.width - 1, 10);
+                
+                this.paths = [path1, path2];
+            }
+            
+            createSinglePath(startX, startY, endX, endY) {
+                const path = [];
+                
+                // Set start point as spawn
+                let tile = this.mapTiles[startY][startX];
+                tile.sprite.setTexture('spawn');
+                tile.type = 'spawn';
+                
+                // Add start point to path
+                path.push({ x: startX, y: startY });
+                
+                // Generate path
+                let currentX = startX;
+                let currentY = startY;
+                
+                // Simple horizontal path for now
+                while (currentX < endX) {
+                    currentX++;
+                    tile = this.mapTiles[currentY][currentX];
+                    if (currentX < endX) {
+                        tile.sprite.setTexture('path');
+                        tile.type = 'path';
+                    } else {
+                        tile.sprite.setTexture('exit');
+                        tile.type = 'exit';
+                    }
+                    
+                    path.push({ x: currentX, y: currentY });
+                }
+                
+                return path;
+            }
+            
+            setupUI() {
+                // Set up UI elements
+                this.healthText = this.add.text(20, 20, 'Lives: ' + this.lives, {
+                    fontFamily: 'Arial',
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                });
+                
+                this.resourcesText = this.add.text(20, 50, 'Resources: ' + this.resources, {
+                    fontFamily: 'Arial',
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                });
+                
+                this.waveText = this.add.text(20, 80, 'Wave: ' + this.waveNumber, {
+                    fontFamily: 'Arial',
+                    fontSize: '16px',
+                    color: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                });
+                
+                // Set up tower placement preview
+                this.towerPreview = this.add.image(0, 0, 'basic-tower');
+                this.towerPreview.setAlpha(0.5);
+                this.towerPreview.setVisible(false);
+                
+                this.rangePreview = this.add.image(0, 0, 'tower-range');
+                this.rangePreview.setAlpha(0.3);
+                this.rangePreview.setVisible(false);
+            }
+            
+            setupInputHandlers() {
+                // Handle tile clicks for tower placement
+                this.input.on('pointerdown', (pointer) => {
+                    if (pointer.button === 0) { // Left click
+                        const x = Math.floor(pointer.x / this.mapConfig.tileSize);
+                        const y = Math.floor(pointer.y / this.mapConfig.tileSize);
+                        
+                        if (x >= 0 && x < this.mapConfig.width && y >= 0 && y < this.mapConfig.height) {
+                            const tile = this.mapTiles[y][x];
+                            
+                            if (tile.type === 'grass' && !tile.hasTower) {
+                                this.placeTower(x, y, this.selectedTowerType);
+                            }
+                        }
                     }
                 });
                 
-                // Increase mooks per wave
-                this.waveConfig.mooksPerWave = 10 + (this.wave * 2);
+                // Handle mouse movement for tower preview
+                this.input.on('pointermove', (pointer) => {
+                    const x = Math.floor(pointer.x / this.mapConfig.tileSize);
+                    const y = Math.floor(pointer.y / this.mapConfig.tileSize);
+                    
+                    if (x >= 0 && x < this.mapConfig.width && y >= 0 && y < this.mapConfig.height) {
+                        const tile = this.mapTiles[y][x];
+                        
+                        if (tile.type === 'grass' && !tile.hasTower) {
+                            this.towerPreview.setPosition(
+                                x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                                y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2
+                            );
+                            this.towerPreview.setVisible(true);
+                            
+                            this.rangePreview.setPosition(
+                                x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                                y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2
+                            );
+                            this.rangePreview.setVisible(true);
+                        } else {
+                            this.towerPreview.setVisible(false);
+                            this.rangePreview.setVisible(false);
+                        }
+                    } else {
+                        this.towerPreview.setVisible(false);
+                        this.rangePreview.setVisible(false);
+                    }
+                });
                 
-                // Decrease spawn delay slightly
-                this.waveConfig.spawnDelay = Math.max(500, 1000 - (this.wave * 50));
+                // Set up UI buttons
+                document.getElementById('start-wave-button').addEventListener('click', () => {
+                    this.startWave();
+                });
+                
+                const towerButtons = document.querySelectorAll('.tower-option');
+                towerButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.selectedTowerType = button.dataset.type;
+                        
+                        // Update preview texture
+                        this.towerPreview.setTexture(this.selectedTowerType + '-tower');
+                    });
+                });
             }
             
-            spawnMook(path) {
-                if (!this.waveActive || this.mooksSpawned >= this.waveConfig.mooksPerWave) {
-                    return null;
+            placeTower(x, y, type) {
+                // Get tower cost
+                let cost = 20; // Default cost
+                switch (type) {
+                    case 'fast':
+                        cost = 50;
+                        break;
+                    case 'aoe':
+                        cost = 75;
+                        break;
                 }
                 
-                // Select mook type based on weights
-                const mookType = this.selectMookType();
+                // Check if we have enough resources
+                if (this.resources < cost) {
+                    console.warn("Not enough resources to place tower");
+                    return false;
+                }
                 
-                // Create new mook
-                const mook = new Mook(mookType, path);
-                this.mooks.push(mook);
-                this.mooksSpawned++;
+                // Create tower
+                const tower = {
+                    type: type,
+                    x: x,
+                    y: y,
+                    sprite: this.add.image(
+                        x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                        y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                        type + '-tower'
+                    ),
+                    range: 3, // Default range
+                    damage: 10, // Default damage
+                    attackSpeed: 1, // Default attack speed
+                    lastAttackTime: 0
+                };
                 
-                // Check if this was the last mook to spawn
-                if (this.mooksSpawned >= this.waveConfig.mooksPerWave) {
-                    // Clear spawn timer if it's the last mook
-                    if (this.waveTimer) {
-                        clearTimeout(this.waveTimer);
-                        this.waveTimer = null;
+                // Customize tower properties based on type
+                switch (type) {
+                    case 'fast':
+                        tower.range = 2;
+                        tower.damage = 5;
+                        tower.attackSpeed = 3;
+                        break;
+                    case 'aoe':
+                        tower.range = 2;
+                        tower.damage = 15;
+                        tower.attackSpeed = 0.5;
+                        break;
+                }
+                
+                // Add tower to game
+                this.towers.push(tower);
+                
+                // Mark tile as having a tower
+                this.mapTiles[y][x].hasTower = true;
+                
+                // Deduct resources
+                this.resources -= cost;
+                this.resourcesText.setText('Resources: ' + this.resources);
+                
+                return true;
+            }
+            
+            startWave() {
+                if (this.isWaveInProgress) {
+                    console.warn("Wave already in progress");
+                    return;
+                }
+                
+                // Increment wave number
+                this.waveNumber++;
+                this.waveText.setText('Wave: ' + this.waveNumber);
+                
+                // Set wave in progress
+                this.isWaveInProgress = true;
+                
+                // Determine wave properties
+                const mookCount = 10 + (this.waveNumber * 2);
+                
+                // Start spawning mooks
+                this.startSpawningMooks(mookCount);
+                
+                // Disable start wave button during wave
+                document.getElementById('start-wave-button').disabled = true;
+            }
+            
+            startSpawningMooks(count) {
+                // This method is responsible for spawning mooks over time
+                // We'll spawn one mook immediately and the rest with a delay
+                
+                // Determine mook type based on wave number
+                const mookType = this.determineMookType();
+                
+                // Spawn first mook
+                this.spawnMook(mookType);
+                
+                // Set up timed spawning for remaining mooks
+                let spawnedCount = 1;
+                
+                // Store interval ID
+                this.spawnIntervalId = setInterval(() => {
+                    if (spawnedCount >= count) {
+                        clearInterval(this.spawnIntervalId);
+                        return;
                     }
+                    
+                    // Spawn another mook
+                    this.spawnMook(mookType);
+                    spawnedCount++;
+                    
+                    // If all mooks spawned, clear timer
+                    if (spawnedCount >= count) {
+                        clearInterval(this.spawnIntervalId);
+                        
+                        // Check for end of wave after last mook is spawned
+                        this.checkWaveEnd();
+                    }
+                }, 1000); // Spawn a new mook every second
+            }
+            
+            determineMookType() {
+                // Determine mook type based on wave number
+                if (this.waveNumber % 4 === 0) {
+                    return 'tank';
+                } else if (this.waveNumber % 3 === 0) {
+                    return 'armored';
+                } else if (this.waveNumber % 2 === 0) {
+                    return 'fast';
+                } else {
+                    return 'standard';
                 }
+            }
+            
+            spawnMook(type) {
+                // Pick a random path
+                const pathIndex = Math.floor(Math.random() * this.paths.length);
+                const path = this.paths[pathIndex];
+                
+                // Create mook
+                const mook = {
+                    type: type,
+                    path: path,
+                    pathIndex: 0,
+                    health: 100, // Default health
+                    maxHealth: 100,
+                    speed: 1, // Tiles per second
+                    sprite: this.add.image(
+                        path[0].x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                        path[0].y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                        type + '-mook'
+                    ),
+                    healthBar: this.add.rectangle(
+                        path[0].x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2,
+                        path[0].y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2 - 15,
+                        30, 5, 0x00ff00
+                    )
+                };
+                
+                // Customize mook properties based on type
+                switch (type) {
+                    case 'fast':
+                        mook.health = 60;
+                        mook.maxHealth = 60;
+                        mook.speed = 2;
+                        break;
+                    case 'armored':
+                        mook.health = 150;
+                        mook.maxHealth = 150;
+                        mook.speed = 0.7;
+                        break;
+                    case 'tank':
+                        mook.health = 300;
+                        mook.maxHealth = 300;
+                        mook.speed = 0.5;
+                        break;
+                }
+                
+                // Add mook to game
+                this.mooks.push(mook);
                 
                 return mook;
             }
             
-            selectMookType() {
-                // Get total weight
-                const totalWeight = this.waveConfig.mookTypes.reduce((sum, type) => sum + type.weight, 0);
-                
-                // Random value based on total weight
-                let random = Math.random() * totalWeight;
-                
-                // Select mook type
-                for (const mookType of this.waveConfig.mookTypes) {
-                    if (random < mookType.weight) {
-                        return mookType.type;
-                    }
-                    random -= mookType.weight;
+            checkWaveEnd() {
+                // If no more mooks, wave is over
+                if (this.mooks.length === 0 && this.isWaveInProgress) {
+                    this.isWaveInProgress = false;
+                    
+                    // Award resources for completing the wave
+                    const waveReward = 25 + (this.waveNumber * 5);
+                    this.resources += waveReward;
+                    this.resourcesText.setText('Resources: ' + this.resources);
+                    
+                    // Enable start wave button
+                    document.getElementById('start-wave-button').disabled = false;
+                    
+                    console.log('Wave completed! Reward: ' + waveReward);
                 }
-                
-                // Default to standard mook
-                return Mook.MOOK_STANDARD;
-            }
-            
-            mookReachedEnd(mook) {
-                // Mark mook as inactive and reached end
-                mook.active = false;
-                mook.reachedEnd = true;
-                
-                // Reduce lives
-                this.reduceLives(mook.damage);
-                
-                // Track leaked mooks
-                this.mooksLeaked++;
-                
-                // Check if wave is complete
-                this.checkWaveCompletion();
-            }
-            
-            mookKilled(mook) {
-                // Mark mook as inactive
-                mook.active = false;
-                
-                // Add gold reward
-                this.addGold(mook.reward);
-                
-                // Track killed mooks
-                this.mooksKilled++;
-                
-                // Check if wave is complete
-                this.checkWaveCompletion();
-            }
-            
-            checkWaveCompletion() {
-                // Wave is complete when all mooks are spawned and either killed or reached the end
-                if (this.waveActive && 
-                    this.mooksSpawned >= this.waveConfig.mooksPerWave && 
-                    this.mooksKilled + this.mooksLeaked >= this.mooksSpawned &&
-                    !this.gameOver) {
-                    
-                    this.endWave();
-                }
-            }
-            
-            endWave() {
-                if (!this.waveActive) return;
-                
-                this.waveActive = false;
-                
-                // Clear any remaining spawn timer
-                if (this.waveTimer) {
-                    clearTimeout(this.waveTimer);
-                    this.waveTimer = null;
-                }
-                
-                // Add wave completion bonus if not game over
-                if (!this.gameOver) {
-                    this.addGold(50 + (this.wave * 10));
-                    
-                    // Check for game win
-                    if (this.wave >= this.waveConfig.maxWaves) {
-                        const infoPanel = document.getElementById('info-panel');
-                        infoPanel.textContent = 'YOU WIN! You completed all waves!';
-                        infoPanel.style.color = '#55ff55';
-                        infoPanel.style.fontWeight = 'bold';
-                        
-                        // Update button
-                        document.getElementById('wave-button').textContent = 'Victory!';
-                        document.getElementById('wave-button').disabled = true;
-                        
-                        this.gameOver = true;
-                    }
-                }
-                
-                // Update UI
-                this.updateUI();
-            }
-            
-            updateUI() {
-                document.getElementById('gold-value').textContent = this.gold;
-                document.getElementById('lives-value').textContent = this.lives;
-                document.getElementById('wave-value').textContent = this.wave;
-                
-                // Update wave button
-                if (this.gameOver) {
-                    document.getElementById('wave-button').textContent = this.lives <= 0 ? 'Game Over' : 'Victory!';
-                    document.getElementById('wave-button').disabled = true;
-                } else if (this.waveActive) {
-                    const progress = Math.floor((this.mooksKilled + this.mooksLeaked) / this.waveConfig.mooksPerWave * 100);
-                    document.getElementById('wave-button').textContent = `Wave in Progress - ${progress}%`;
-                    document.getElementById('wave-button').disabled = true;
-                } else {
-                    document.getElementById('wave-button').textContent = this.wave === 0 ? 'Start Game' : 'Start Wave ' + (this.wave + 1);
-                    document.getElementById('wave-button').disabled = false;
-                }
-            }
-            
-            addTower(tower) {
-                this.towers.push(tower);
-            }
-            
-            removeTower(gridX, gridY) {
-                const index = this.towers.findIndex(t => t.gridX === gridX && t.gridY === gridY);
-                if (index !== -1) {
-                    const tower = this.towers[index];
-                    this.towers.splice(index, 1);
-                    
-                    // Refund some of the cost
-                    this.addGold(Math.floor(tower.cost * 0.7));
-                    return true;
-                }
-                return false;
-            }
-            
-            getTower(gridX, gridY) {
-                return this.towers.find(t => t.gridX === gridX && t.gridY === gridY);
-            }
-            
-            update(time, deltaTime) {
-                // Skip updates if game over
-                if (this.gameOver) return;
-                
-                // Update mooks
-                this.updateMooks(deltaTime);
-                
-                // Update towers
-                this.updateTowers(time);
-            }
-            
-            updateMooks(deltaTime) {
-                // Scale deltaTime to seconds
-                const deltaSeconds = deltaTime / 1000;
-                
-                for (let i = 0; i < this.mooks.length; i++) {
-                    const mook = this.mooks[i];
-                    
-                    // Skip inactive mooks
-                    if (!mook.active) continue;
-                    
-                    // Update mook position
-                    const reachedEnd = mook.update(deltaSeconds);
-                    
-                    // Check if mook reached the end
-                    if (reachedEnd) {
-                        this.mookReachedEnd(mook);
-                    }
-                }
-                
-                // Clean up inactive mooks
-                this.mooks = this.mooks.filter(mook => mook.active || mook.reachedEnd);
-            }
-            
-            updateTowers(time) {
-                // Temporarily disable tower attacking here since we're handling it in the scene for visuals
-                // This prevents double damage
-                
-                // We will re-enable this once we refactor to separate visual effects from game logic
-                
-                /*
-                for (const tower of this.towers) {
-                    // Try to attack a target
-                    const attackResults = tower.attackTarget(time, this.mooks, 60); // 60 is cellSize
-                    
-                    // Process attack results
-                    if (attackResults) {
-                        for (const result of attackResults) {
-                            if (result.isDead) {
-                                this.mookKilled(result.mook);
-                            }
-                        }
-                    }
-                }
-                */
-            }
-        }
-    
-        class MapScene extends Phaser.Scene {
-            constructor() {
-                super('MapScene');
-                
-                // Camera and interaction state
-                this.isDragging = false;
-                this.dragStartX = 0;
-                this.dragStartY = 0;
-                this.pinchDistance = 0;
-                this.currentZoom = 1;
-                
-                // Cell size in pixels
-                this.cellSize = 60;
-                
-                // Tower placement
-                this.selectedTowerType = null;
-                this.placementPreview = null;
-                
-                // Projectiles
-                this.projectiles = [];
-                this.lastProjectileId = 0;
-                
-                // Game state
-                this.gameState = new GameState();
-            }
-            
-            preload() {
-                // Create textures for map cells and towers
-                this.createTextures();
-            }
-            
-            createTextures() {
-                // Create map cell textures
-                this.createCellTextures();
-                
-                // Create tower textures
-                this.createTowerTextures();
-                
-                // Create range indicator texture
-                this.createRangeTexture();
-                
-                // Create projectile textures
-                this.createProjectileTextures();
-            }
-            
-            createProjectileTextures() {
-                // Basic projectile (blue bullet)
-                this.createBasicProjectileTexture('basic-projectile');
-                
-                // Sniper projectile (orange bullet)
-                this.createSniperProjectileTexture('sniper-projectile');
-                
-                // Splash projectile (red bomb)
-                this.createSplashProjectileTexture('splash-projectile');
-            }
-            
-            createBasicProjectileTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Blue bullet
-                graphics.fillStyle(0x3399ff);
-                graphics.fillCircle(8, 8, 5);
-                
-                // Highlight
-                graphics.fillStyle(0xaaddff);
-                graphics.fillCircle(6, 6, 2);
-                
-                // Generate texture
-                graphics.generateTexture(key, 16, 16);
-                graphics.clear();
-            }
-            
-            createSniperProjectileTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Orange bullet
-                graphics.fillStyle(0xff9900);
-                graphics.fillCircle(8, 8, 6);
-                
-                // Highlight
-                graphics.fillStyle(0xffcc66);
-                graphics.fillCircle(6, 6, 2);
-                
-                // Outline
-                graphics.lineStyle(1, 0xffcc00);
-                graphics.strokeCircle(8, 8, 6);
-                
-                // Generate texture
-                graphics.generateTexture(key, 16, 16);
-                graphics.clear();
-            }
-            
-            createSplashProjectileTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Red bomb shape
-                graphics.fillStyle(0xff3366);
-                graphics.fillCircle(10, 10, 8);
-                
-                // Top highlights
-                graphics.fillStyle(0xff99aa);
-                graphics.fillCircle(7, 7, 2);
-                
-                // Fuse
-                graphics.lineStyle(2, 0x666666);
-                graphics.moveTo(10, 3);
-                graphics.lineTo(14, 0);
-                
-                // Generate texture
-                graphics.generateTexture(key, 20, 20);
-                graphics.clear();
-            }
-            
-            createCellTextures() {
-                // Empty cell texture
-                this.createEmptyCellTexture('empty-cell');
-                
-                // Path cell texture
-                this.createPathCellTexture('path-cell');
-                
-                // Spawn cell texture
-                this.createSpawnCellTexture('spawn-cell');
-                
-                // Exit cell texture
-                this.createExitCellTexture('exit-cell');
-                
-                // Tower cell texture (base)
-                this.createTowerCellTexture('tower-cell');
-            }
-            
-            createTowerTextures() {
-                // Basic tower texture
-                this.createBasicTowerTexture('basic-tower');
-                
-                // Sniper tower texture
-                this.createSniperTowerTexture('sniper-tower');
-                
-                // Splash tower texture
-                this.createSplashTowerTexture('splash-tower');
-            }
-            
-            createEmptyCellTexture(key) {
-                const graphics = this.make.graphics();
-                graphics.fillStyle(0x333333);
-                graphics.fillRect(0, 0, 100, 100);
-                graphics.lineStyle(2, 0x555555);
-                graphics.strokeRect(1, 1, 98, 98);
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createPathCellTexture(key) {
-                const graphics = this.make.graphics();
-                graphics.fillStyle(0x885500);
-                graphics.fillRect(0, 0, 100, 100);
-                graphics.lineStyle(2, 0xaa7722);
-                graphics.strokeRect(1, 1, 98, 98);
-                
-                // Add path markings
-                graphics.lineStyle(3, 0xffcc88);
-                graphics.beginPath();
-                graphics.moveTo(20, 50);
-                graphics.lineTo(80, 50);
-                graphics.strokePath();
-                
-                // Arrow
-                graphics.lineTo(70, 40);
-                graphics.moveTo(80, 50);
-                graphics.lineTo(70, 60);
-                graphics.strokePath();
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createSpawnCellTexture(key) {
-                const graphics = this.make.graphics();
-                graphics.fillStyle(0x00aa00);
-                graphics.fillRect(0, 0, 100, 100);
-                graphics.lineStyle(2, 0x00cc00);
-                graphics.strokeRect(1, 1, 98, 98);
-                
-                // Add spawn symbol
-                graphics.fillStyle(0xffffff);
-                graphics.fillCircle(50, 50, 30);
-                graphics.fillStyle(0x00aa00);
-                graphics.fillCircle(50, 50, 25);
-                graphics.fillStyle(0xffffff);
-                
-                // Add arrow
-                graphics.lineStyle(6, 0xffffff);
-                graphics.beginPath();
-                graphics.moveTo(35, 50);
-                graphics.lineTo(75, 50);
-                graphics.strokePath();
-                graphics.beginPath();
-                graphics.moveTo(65, 40);
-                graphics.lineTo(75, 50);
-                graphics.lineTo(65, 60);
-                graphics.strokePath();
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createExitCellTexture(key) {
-                const graphics = this.make.graphics();
-                graphics.fillStyle(0xaa0000);
-                graphics.fillRect(0, 0, 100, 100);
-                graphics.lineStyle(2, 0xcc0000);
-                graphics.strokeRect(1, 1, 98, 98);
-                
-                // Add exit symbol
-                graphics.fillStyle(0xffffff);
-                graphics.fillCircle(50, 50, 30);
-                graphics.fillStyle(0xaa0000);
-                graphics.fillCircle(50, 50, 25);
-                
-                // Add X
-                graphics.lineStyle(6, 0xffffff);
-                graphics.beginPath();
-                graphics.moveTo(35, 35);
-                graphics.lineTo(65, 65);
-                graphics.moveTo(65, 35);
-                graphics.lineTo(35, 65);
-                graphics.strokePath();
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createTowerCellTexture(key) {
-                const graphics = this.make.graphics();
-                graphics.fillStyle(0x555555);
-                graphics.fillRect(0, 0, 100, 100);
-                graphics.lineStyle(2, 0x777777);
-                graphics.strokeRect(1, 1, 98, 98);
-                
-                // Add base platform
-                graphics.fillStyle(0x666666);
-                graphics.fillRect(10, 10, 80, 80);
-                graphics.lineStyle(2, 0x888888);
-                graphics.strokeRect(10, 10, 80, 80);
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createBasicTowerTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Base
-                graphics.fillStyle(0x666666);
-                graphics.fillRect(0, 0, 100, 100);
-                
-                // Tower
-                graphics.fillStyle(0x3399ff);
-                graphics.fillRect(30, 20, 40, 60);
-                
-                // Top
-                graphics.fillStyle(0x55aaff);
-                graphics.fillRect(20, 10, 60, 20);
-                
-                // Border
-                graphics.lineStyle(3, 0x333333);
-                graphics.strokeRect(30, 20, 40, 60);
-                graphics.strokeRect(20, 10, 60, 20);
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createSniperTowerTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Base
-                graphics.fillStyle(0x666666);
-                graphics.fillRect(0, 0, 100, 100);
-                
-                // Tower
-                graphics.fillStyle(0xff9900);
-                graphics.fillRect(35, 15, 30, 70);
-                
-                // Top
-                graphics.fillStyle(0xffaa00);
-                graphics.fillRect(25, 5, 50, 20);
-                
-                // Border
-                graphics.lineStyle(3, 0x333333);
-                graphics.strokeRect(35, 15, 30, 70);
-                graphics.strokeRect(25, 5, 50, 20);
-                
-                // Sniper scope
-                graphics.fillStyle(0x333333);
-                graphics.fillCircle(50, 35, 10);
-                graphics.fillStyle(0xbbbbbb);
-                graphics.fillCircle(50, 35, 6);
-                graphics.fillStyle(0x000000);
-                graphics.fillCircle(50, 35, 3);
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createSplashTowerTexture(key) {
-                const graphics = this.make.graphics();
-                
-                // Base
-                graphics.fillStyle(0x666666);
-                graphics.fillRect(0, 0, 100, 100);
-                
-                // Tower body
-                graphics.fillStyle(0xff3366);
-                graphics.fillRect(30, 30, 40, 40);
-                
-                // Tower sides
-                graphics.fillStyle(0xcc3355);
-                graphics.fillRect(20, 40, 10, 20);
-                graphics.fillRect(70, 40, 10, 20);
-                
-                // Top
-                graphics.fillStyle(0xff5577);
-                graphics.fillRect(25, 20, 50, 20);
-                
-                // Border
-                graphics.lineStyle(3, 0x333333);
-                graphics.strokeRect(30, 30, 40, 40);
-                graphics.strokeRect(20, 40, 10, 20);
-                graphics.strokeRect(70, 40, 10, 20);
-                graphics.strokeRect(25, 20, 50, 20);
-                
-                graphics.generateTexture(key, 100, 100);
-                graphics.clear();
-            }
-            
-            createRangeTexture() {
-                const graphics = this.make.graphics();
-                
-                // Semi-transparent circle - make it centered properly
-                graphics.fillStyle(0xffffff, 0.2);
-                graphics.fillCircle(100, 100, 100);
-                
-                // Border
-                graphics.lineStyle(2, 0xffffff, 0.5);
-                graphics.strokeCircle(100, 100, 100);
-                
-                graphics.generateTexture('range-indicator', 200, 200);
-                graphics.clear();
-            }
-            
-            create() {
-                try {
-                    // Create the map
-                    this.tdMap = new TDMap(20, 15);
-                    
-                    // Set up world boundaries
-                    const worldWidth = this.tdMap.width * this.cellSize;
-                    const worldHeight = this.tdMap.height * this.cellSize;
-                    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-                    
-                    // Render the map
-                    this.renderMap();
-                    
-                    // Set up camera controls
-                    this.setupCameraControls();
-                    
-                    // Set up tower placement
-                    this.setupTowerPlacement();
-                    
-                    // Set up wave controls
-                    this.setupWaveControls();
-                    
-                    // Set up cell clicks for tower placement
-                    this.setupCellClicks();
-                    
-                    // Initialize cleanup timer as undefined
-                    this.cleanupTimer = undefined;
-                    
-                    // Add debug info
-                    const infoPanel = document.getElementById('info-panel');
-                    infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${this.currentZoom.toFixed(2)}x`;
-                    
-                } catch (error) {
-                    console.error("Error in create method:", error);
-                    displayError("Create method failed: " + error.message);
-                }
-            }
-            
-            renderMap() {
-                // Create containers in the correct order for proper layering
-                // (later containers appear on top)
-                
-                // Container for all map cells (bottom layer)
-                this.mapContainer = this.add.container(0, 0);
-                
-                // Container for attack effects (middle layer)
-                this.effectsContainer = this.add.container(0, 0);
-                
-                // Container for all towers (upper middle layer)
-                this.towerContainer = this.add.container(0, 0);
-                
-                // Container for all mooks (top layer)
-                this.mookContainer = this.add.container(0, 0);
-                
-                // Cells
-                this.cellSprites = [];
-                
-                // Render grid
-                for (let x = 0; x < this.tdMap.width; x++) {
-                    this.cellSprites[x] = [];
-                    for (let y = 0; y < this.tdMap.height; y++) {
-                        const cellValue = this.tdMap.getCellValue(x, y);
-                        let cellSprite;
-                        
-                        // Choose texture based on cell type
-                        switch (cellValue) {
-                            case TDMap.CELL_PATH:
-                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'path-cell');
-                                break;
-                            case TDMap.CELL_SPAWN:
-                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'spawn-cell');
-                                break;
-                            case TDMap.CELL_EXIT:
-                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'exit-cell');
-                                break;
-                            default:
-                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'empty-cell');
-                        }
-                        
-                        cellSprite.setScale(this.cellSize/100); // Scale to cell size
-                        cellSprite.setInteractive();
-                        cellSprite.setData('gridX', x);
-                        cellSprite.setData('gridY', y);
-                        
-                        this.cellSprites[x][y] = cellSprite;
-                        this.mapContainer.add(cellSprite);
-                        
-                        // Add grid coordinates for reference (only on some cells to avoid clutter)
-                        if (x % 5 === 0 && y % 5 === 0) {
-                            const coordText = this.add.text(
-                                x * this.cellSize + this.cellSize/2, 
-                                y * this.cellSize + this.cellSize/2, 
-                                `(${x},${y})`, 
-                                {
-                                    fontSize: '10px',
-                                    color: '#ffffff',
-                                    stroke: '#000000',
-                                    strokeThickness: 2
-                                }
-                            );
-                            coordText.setOrigin(0.5);
-                            this.mapContainer.add(coordText);
-                        }
-                    }
-                }
-                
-                // Render path(s) with arrows
-                this.renderPaths();
-                
-                // Add placement preview
-                this.placementPreview = this.add.container(0, 0);
-                this.placementPreview.setVisible(false);
-                
-                // Preview range indicator
-                this.rangeIndicator = this.add.image(0, 0, 'range-indicator');
-                this.rangeIndicator.setOrigin(0.5, 0.5);
-                this.rangeIndicator.setVisible(false);
-                
-                // Tower sprite for placement preview
-                this.towerPreview = this.add.image(0, 0, 'basic-tower');
-                this.towerPreview.setScale(this.cellSize/100 * 0.7);
-                this.towerPreview.setVisible(false);
-            }
-            
-            renderPaths() {
-                // Draw path overlay with directional indicators
-                if (this.tdMap.paths.length > 0) {
-                    const path = this.tdMap.paths[0]; // Just render the first path for now
-                    
-                    // Create graphics for path overlay
-                    const pathGraphics = this.add.graphics();
-                    pathGraphics.lineStyle(3, 0xffff00, 0.5);
-                    
-                    // Draw path line
-                    pathGraphics.beginPath();
-                    pathGraphics.moveTo(
-                        path[0].x * this.cellSize + this.cellSize/2,
-                        path[0].y * this.cellSize + this.cellSize/2
-                    );
-                    
-                    for (let i = 1; i < path.length; i++) {
-                        pathGraphics.lineTo(
-                            path[i].x * this.cellSize + this.cellSize/2,
-                            path[i].y * this.cellSize + this.cellSize/2
-                        );
-                    }
-                    
-                    pathGraphics.strokePath();
-                    
-                    // Add directional arrows at intervals
-                    for (let i = 1; i < path.length; i += 2) {
-                        const prev = path[i-1];
-                        const curr = path[i];
-                        
-                        // Calculate direction
-                        const angle = Phaser.Math.Angle.Between(
-                            prev.x * this.cellSize + this.cellSize/2,
-                            prev.y * this.cellSize + this.cellSize/2,
-                            curr.x * this.cellSize + this.cellSize/2,
-                            curr.y * this.cellSize + this.cellSize/2
-                        );
-                        
-                        // Create arrow sprite
-                        const arrow = this.add.text(
-                            curr.x * this.cellSize + this.cellSize/2,
-                            curr.y * this.cellSize + this.cellSize/2,
-                            '➡️',
-                            { fontSize: '20px' }
-                        );
-                        arrow.setOrigin(0.5);
-                        arrow.setRotation(angle);
-                        
-                        this.mapContainer.add(arrow);
-                    }
-                }
-            }
-            
-            setupTowerPlacement() {
-                // Set up tower selection buttons
-                const buttons = document.querySelectorAll('.tower-button');
-                
-                buttons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const towerType = button.getAttribute('data-type');
-                        const towerCost = parseInt(button.getAttribute('data-cost'));
-                        
-                        // Check if user has enough gold
-                        if (this.gameState.gold < towerCost) {
-                            displayError('Not enough gold to place this tower!');
-                            return;
-                        }
-                        
-                        // Select this tower type for placement
-                        this.selectTowerType(towerType);
-                        
-                        // Update UI
-                        buttons.forEach(b => b.classList.remove('selected'));
-                        button.classList.add('selected');
-                    });
-                });
-                
-                // Listen for escape key to cancel placement
-                this.input.keyboard.on('keydown-ESC', () => {
-                    this.cancelTowerPlacement();
-                    buttons.forEach(b => b.classList.remove('selected'));
-                });
-            }
-            
-            setupWaveControls() {
-                // Set up wave button
-                const waveButton = document.getElementById('wave-button');
-                
-                waveButton.addEventListener('click', () => {
-                    if (!this.gameState.waveActive && !this.gameState.gameOver) {
-                        // Start the wave
-                        this.gameState.startWave();
-                        
-                        // Start spawning mooks
-                        this.startSpawningMooks();
-                    }
-                });
-            }
-            
-            startSpawningMooks() {
-                // Get all paths
-                const paths = this.tdMap.paths;
-                if (paths.length === 0) return;
-                
-                // Track which path to use next (for alternating spawns)
-                this.currentPathIndex = 0;
-                
-                // Function to spawn a mook
-                const spawnMook = () => {
-                    if (!this.gameState.waveActive) return;
-                    
-                    // Select path to spawn on (alternate between paths)
-                    const path = paths[this.currentPathIndex];
-                    this.currentPathIndex = (this.currentPathIndex + 1) % paths.length;
-                    
-                    // Spawn a mook
-                    const mook = this.gameState.spawnMook(path);
-                    
-                    if (mook) {
-                        // Create mook sprite
-                        this.createMookSprite(mook);
-                        
-                        // Create a random path color for this mook
-                        mook.pathColor = Phaser.Display.Color.HSVToRGB(
-                            Math.random() * 360,
-                            0.7,
-                            1
-                        ).color;
-                        
-                        // Schedule next spawn if more mooks to spawn
-                        if (this.gameState.mooksSpawned < this.gameState.waveConfig.mooksPerWave) {
-                            this.gameState.waveTimer = setTimeout(spawnMook, this.gameState.waveConfig.spawnDelay);
-                        }
-                    }
-                };
-                
-                // Start spawning
-                spawnMook();
-            }
-            
-            createMookSprite(mook) {
-                // Create sprite container
-                const container = this.add.container(
-                    mook.position.x * this.cellSize + this.cellSize/2,
-                    mook.position.y * this.cellSize + this.cellSize/2
-                );
-                
-                // Create emoji sprite based on mook type
-                let emoji;
-                switch(mook.type) {
-                    case Mook.MOOK_FAST:
-                        emoji = '🚀';
-                        break;
-                    case Mook.MOOK_ARMORED:
-                        emoji = '🛡️';
-                        break;
-                    case Mook.MOOK_TANK:
-                        emoji = '🦖';
-                        break;
-                    default:
-                        emoji = '👾';
-                }
-                
-                // Add emoji text
-                const text = this.add.text(0, 0, emoji, {
-                    fontSize: '32px'
-                });
-                text.setOrigin(0.5);
-                container.add(text);
-                
-                // Create health bar background
-                const barWidth = this.cellSize * 0.8;
-                const barHeight = this.cellSize * 0.1;
-                const barBg = this.add.rectangle(
-                    0,
-                    this.cellSize * 0.4,
-                    barWidth,
-                    barHeight,
-                    0xff0000
-                );
-                container.add(barBg);
-                
-                // Create health bar foreground
-                const healthBar = this.add.rectangle(
-                    -barWidth/2 + (barWidth * mook.getHealthPercent())/2,
-                    this.cellSize * 0.4,
-                    barWidth * mook.getHealthPercent(),
-                    barHeight,
-                    0x00ff00
-                );
-                healthBar.setOrigin(0, 0.5);
-                container.add(healthBar);
-                
-                // Store reference to container in mook
-                mook.sprite = container;
-                mook.healthBar = healthBar;
-                mook.barWidth = barWidth;
-                
-                // Add to scene
-                this.mookContainer.add(container);
-            }
-            
-            updateMookSprites() {
-                // Update positions of all mook sprites and clean up dead mooks
-                for (const mook of this.gameState.mooks) {
-                    if (mook.sprite) {
-                        if (!mook.active) {
-                            // If mook is inactive (dead or reached end), destroy its sprite after effects complete
-                            if (!mook.markedForRemoval) {
-                                mook.markedForRemoval = true;
-                                
-                                // Delay removal to allow death effects to play
-                                this.time.delayedCall(1000, () => {
-                                    if (mook.sprite) {
-                                        mook.sprite.destroy();
-                                        mook.sprite = null;
-                                    }
-                                });
-                            }
-                            
-                            // Hide immediately
-                            mook.sprite.visible = false;
-                        } else {
-                            // Update position for active mooks
-                            mook.sprite.setPosition(
-                                mook.position.x * this.cellSize + this.cellSize/2,
-                                mook.position.y * this.cellSize + this.cellSize/2
-                            );
-                            
-                            // Update health bar
-                            if (mook.healthBar) {
-                                const healthPercent = mook.getHealthPercent();
-                                mook.healthBar.width = mook.barWidth * healthPercent;
-                                mook.healthBar.x = -mook.barWidth/2 + (mook.barWidth * healthPercent)/2;
-                                
-                                // Change color based on health
-                                if (healthPercent < 0.3) {
-                                    mook.healthBar.fillColor = 0xff3300;
-                                } else if (healthPercent < 0.6) {
-                                    mook.healthBar.fillColor = 0xffff00;
-                                } else {
-                                    mook.healthBar.fillColor = 0x00ff00;
-                                }
-                            }
-                            
-                            // Ensure visible
-                            mook.sprite.visible = true;
-                        }
-                    }
-                }
-                
-                // Clean up the mooks array periodically to remove those fully processed
-                if (this.gameState.waveActive && this.cleanupTimer === undefined) {
-                    this.cleanupTimer = this.time.addEvent({
-                        delay: 2000,
-                        callback: () => {
-                            // Filter out inactive mooks that have had their sprites removed
-                            this.gameState.mooks = this.gameState.mooks.filter(
-                                mook => mook.active || !mook.markedForRemoval || mook.sprite
-                            );
-                        },
-                        loop: true
-                    });
-                } else if (!this.gameState.waveActive && this.cleanupTimer !== undefined) {
-                    this.cleanupTimer.remove();
-                    this.cleanupTimer = undefined;
-                }
-            }
-            
-            createTowerAttackEffects(tower, attackResult) {
-                if (!attackResult || attackResult.length === 0) return;
-                
-                // Get tower position
-                const towerX = tower.gridX * this.cellSize + this.cellSize/2;
-                const towerY = tower.gridY * this.cellSize + this.cellSize/2;
-                
-                // Get target
-                const target = attackResult[0].mook;
-                const targetX = target.position.x * this.cellSize + this.cellSize/2;
-                const targetY = target.position.y * this.cellSize + this.cellSize/2;
-                
-                // Create projectile based on tower type
-                let projectileTexture;
-                let projectileScale = 1;
-                let projectileSpeed = 600; // pixels per second
-                let trailEffect = false;
-                
-                switch(tower.type) {
-                    case Tower.TOWER_SNIPER:
-                        projectileTexture = 'sniper-projectile';
-                        projectileScale = 1.5;
-                        projectileSpeed = 800; // faster bullet
-                        trailEffect = true;
-                        break;
-                    case Tower.TOWER_SPLASH:
-                        projectileTexture = 'splash-projectile';
-                        projectileScale = 1.3;
-                        projectileSpeed = 400; // slower bomb
-                        break;
-                    default:
-                        projectileTexture = 'basic-projectile';
-                        projectileScale = 1;
-                }
-                
-                // Create projectile sprite
-                const projectile = this.add.image(towerX, towerY, projectileTexture);
-                projectile.setScale(projectileScale);
-                projectile.setOrigin(0.5);
-                
-                // Store projectile data for reference
-                const projectileId = 'projectile_' + (++this.lastProjectileId);
-                this.projectiles.push({
-                    id: projectileId,
-                    sprite: projectile,
-                    target: target,
-                    tower: tower,
-                    attackResult: attackResult,
-                    startX: towerX,
-                    startY: towerY,
-                    targetX: targetX,
-                    targetY: targetY
-                });
-                
-                // Add projectile to effects container
-                this.effectsContainer.add(projectile);
-                
-                // Set up trail effect for sniper projectile
-                if (trailEffect) {
-                    this.time.addEvent({
-                        delay: 20, // 20ms per trail particle
-                        repeat: Math.floor(projectileSpeed / 100), // Roughly how long the projectile will travel
-                        callback: () => {
-                            if (!projectile || !projectile.active) return;
-                            
-                            // Create a trail particle
-                            const trail = this.add.circle(
-                                projectile.x, 
-                                projectile.y, 
-                                3, 
-                                tower.type === Tower.TOWER_SNIPER ? 0xffcc00 : 0x66aaff
-                            );
-                            
-                            // Add to effects container
-                            this.effectsContainer.add(trail);
-                            
-                            // Fade out and remove
-                            this.tweens.add({
-                                targets: trail,
-                                alpha: 0,
-                                scale: 0.5,
-                                duration: 300,
-                                onComplete: () => {
-                                    trail.destroy();
-                                }
-                            });
-                        }
-                    });
-                }
-                
-                // Calculate distance and duration for tween
-                const distance = Phaser.Math.Distance.Between(towerX, towerY, targetX, targetY);
-                const duration = distance / projectileSpeed * 1000; // in ms
-                
-                // Calculate rotation angle for projectile
-                const angle = Phaser.Math.Angle.Between(towerX, towerY, targetX, targetY);
-                projectile.setRotation(angle + Math.PI/2); // Adjust based on projectile texture
-                
-                // Tween projectile to target
-                this.tweens.add({
-                    targets: projectile,
-                    x: targetX,
-                    y: targetY,
-                    duration: duration,
-                    ease: 'Linear',
-                    onComplete: () => {
-                        // Create impact effect
-                        this.createImpactEffect(tower, target, attackResult);
-                        
-                        // Remove projectile
-                        projectile.destroy();
-                        
-                        // Remove from projectiles array
-                        this.projectiles = this.projectiles.filter(p => p.id !== projectileId);
-                    }
-                });
-            }
-            
-            createImpactEffect(tower, target, attackResult) {
-                // Get target position
-                const targetX = target.position.x * this.cellSize + this.cellSize/2;
-                const targetY = target.position.y * this.cellSize + this.cellSize/2;
-                
-                // Create impact effect based on tower type
-                let impactColor;
-                let impactSize;
-                
-                switch(tower.type) {
-                    case Tower.TOWER_SNIPER:
-                        impactColor = 0xff9900; // Orange
-                        impactSize = 10;
-                        break;
-                    case Tower.TOWER_SPLASH:
-                        impactColor = 0xff3366; // Pink/Red
-                        impactSize = 15;
-                        break;
-                    default:
-                        impactColor = 0x3399ff; // Blue
-                        impactSize = 8;
-                }
-                
-                // Create impact flash
-                const impact = this.add.circle(targetX, targetY, impactSize, impactColor, 0.8);
-                
-                // Add to effects container
-                this.effectsContainer.add(impact);
-                
-                // Fade out and scale up the impact
-                this.tweens.add({
-                    targets: impact,
-                    alpha: 0,
-                    scale: 2,
-                    duration: 200,
-                    onComplete: () => {
-                        impact.destroy();
-                    }
-                });
-                
-                // Add splash effect for splash tower
-                if (tower.type === Tower.TOWER_SPLASH && tower.splashRadius > 0) {
-                    // Create explosion
-                    const explosion = this.add.text(
-                        targetX,
-                        targetY,
-                        '💥',
-                        { fontSize: '40px' }
-                    );
-                    explosion.setOrigin(0.5);
-                    this.effectsContainer.add(explosion);
-                    
-                    // Scale up and fade out
-                    this.tweens.add({
-                        targets: explosion,
-                        scale: 2,
-                        alpha: 0,
-                        duration: 500,
-                        onComplete: () => {
-                            explosion.destroy();
-                        }
-                    });
-                    
-                    // Draw splash circle
-                    const splash = this.add.circle(targetX, targetY, tower.splashRadius * this.cellSize * 0.5, impactColor, 0.3);
-                    this.effectsContainer.add(splash);
-                    
-                    // Fade out and scale down the splash
-                    this.tweens.add({
-                        targets: splash,
-                        alpha: 0,
-                        scale: 1.5,
-                        duration: 300,
-                        onComplete: () => {
-                            splash.destroy();
-                        }
-                    });
-                }
-                
-                // Add damage effect on the target
-                for (const result of attackResult) {
-                    const mook = result.mook;
-                    if (mook.sprite) {
-                        // Make the mook sprite flash red
-                        const mookSprite = mook.sprite.list[0]; // Get the text object
-                        this.tweens.add({
-                            targets: mookSprite,
-                            scale: 1.3,
-                            duration: 100,
-                            yoyo: true
-                        });
-                        
-                        // If mook is killed, show explosion
-                        if (result.isDead) {
-                            const deathExplosion = this.add.text(
-                                mook.position.x * this.cellSize + this.cellSize/2,
-                                mook.position.y * this.cellSize + this.cellSize/2,
-                                '💥',
-                                { fontSize: '40px' }
-                            );
-                            deathExplosion.setOrigin(0.5);
-                            this.effectsContainer.add(deathExplosion);
-                            
-                            // Scale up and fade out
-                            this.tweens.add({
-                                targets: deathExplosion,
-                                scale: 2,
-                                alpha: 0,
-                                duration: 500,
-                                onComplete: () => {
-                                    deathExplosion.destroy();
-                                }
-                            });
-                            
-                            // Add gold indicator
-                            const goldText = this.add.text(
-                                mook.position.x * this.cellSize + this.cellSize/2,
-                                mook.position.y * this.cellSize,
-                                '+' + mook.reward + '💰',
-                                { 
-                                    fontSize: '20px',
-                                    stroke: '#000000',
-                                    strokeThickness: 3,
-                                    fontWeight: 'bold',
-                                    color: '#ffff00'
-                                }
-                            );
-                            goldText.setOrigin(0.5);
-                            this.effectsContainer.add(goldText);
-                            
-                            // Float up and fade out
-                            this.tweens.add({
-                                targets: goldText,
-                                y: goldText.y - 50,
-                                alpha: 0,
-                                duration: 1000,
-                                onComplete: () => {
-                                    goldText.destroy();
-                                }
-                            });
-                        }
-                    }
-                }
-            }
-            
-            setupCellClicks() {
-                // Add click handler for grid cells to place towers
-                this.input.on('gameobjectdown', (pointer, gameObject) => {
-                    // Only process if not dragging and we have a tower selected
-                    if (!this.isDragging && this.selectedTowerType) {
-                        const gridX = gameObject.getData('gridX');
-                        const gridY = gameObject.getData('gridY');
-                        
-                        // Attempt to place a tower
-                        this.placeTower(gridX, gridY);
-                    }
-                    // If right-click or holding shift, show tower info or remove
-                    else if (!this.isDragging && (pointer.rightButtonDown() || this.input.keyboard.checkDown(this.input.keyboard.addKey('SHIFT')))) {
-                        const gridX = gameObject.getData('gridX');
-                        const gridY = gameObject.getData('gridY');
-                        
-                        // Check if there's a tower here
-                        const tower = this.gameState.getTower(gridX, gridY);
-                        if (tower) {
-                            // If right-click, remove tower
-                            if (pointer.rightButtonDown()) {
-                                this.removeTower(gridX, gridY);
-                            }
-                            // Otherwise show tower info (not implemented yet)
-                        }
-                    }
-                });
-                
-                // Add hover handler for placement preview
-                this.input.on('gameobjectmove', (pointer, gameObject) => {
-                    if (this.selectedTowerType) {
-                        const gridX = gameObject.getData('gridX');
-                        const gridY = gameObject.getData('gridY');
-                        
-                        // Show placement preview
-                        this.showPlacementPreview(gridX, gridY);
-                    }
-                });
-                
-                // Add hover exit handler
-                this.input.on('gameobjectout', (pointer, gameObject) => {
-                    if (this.selectedTowerType) {
-                        // Hide placement preview when not hovering over a cell
-                        this.towerPreview.setVisible(false);
-                        this.rangeIndicator.setVisible(false);
-                    }
-                });
-            }
-            
-            selectTowerType(type) {
-                this.selectedTowerType = type;
-                
-                // Update tower preview texture
-                switch(type) {
-                    case 'basic':
-                        this.towerPreview.setTexture('basic-tower');
-                        break;
-                    case 'sniper':
-                        this.towerPreview.setTexture('sniper-tower');
-                        break;
-                    case 'splash':
-                        this.towerPreview.setTexture('splash-tower');
-                        break;
-                }
-            }
-            
-            showPlacementPreview(gridX, gridY) {
-                // Check if placement is valid
-                const canPlace = this.tdMap.canPlaceTower(gridX, gridY);
-                
-                // Position the preview
-                const worldX = gridX * this.cellSize + this.cellSize/2;
-                const worldY = gridY * this.cellSize + this.cellSize/2;
-                
-                // Show tower preview
-                this.towerPreview.setPosition(worldX, worldY);
-                this.towerPreview.setVisible(true);
-                
-                // Set alpha based on placement validity
-                this.towerPreview.setAlpha(canPlace ? 0.8 : 0.4);
-                
-                // Show range indicator
-                this.rangeIndicator.setPosition(worldX, worldY);
-                this.rangeIndicator.setVisible(true);
-                
-                // Set range scale based on tower type
-                let range = 2;
-                if (this.selectedTowerType === 'sniper') {
-                    range = 6;
-                } else if (this.selectedTowerType === 'splash') {
-                    range = 2.5;
-                }
-                
-                // Scale the range indicator
-                const rangeScale = (range * this.cellSize) / 100;
-                this.rangeIndicator.setScale(rangeScale);
-                
-                // Set range indicator alpha
-                this.rangeIndicator.setAlpha(canPlace ? 0.5 : 0.2);
-            }
-            
-            placeTower(gridX, gridY) {
-                // Check if tower can be placed
-                if (!this.tdMap.canPlaceTower(gridX, gridY)) {
-                    displayError('Cannot place tower here!');
-                    return false;
-                }
-                
-                // Get tower cost based on type
-                let cost = 50;
-                if (this.selectedTowerType === 'sniper') {
-                    cost = 100;
-                } else if (this.selectedTowerType === 'splash') {
-                    cost = 150;
-                }
-                
-                // Check if player has enough gold
-                if (this.gameState.gold < cost) {
-                    displayError('Not enough gold to place this tower!');
-                    return false;
-                }
-                
-                // Create new tower
-                const tower = new Tower(this.selectedTowerType, gridX, gridY);
-                
-                // Spend gold
-                this.gameState.spendGold(tower.cost);
-                
-                // Update map
-                this.tdMap.placeTower(gridX, gridY);
-                
-                // Add tower to game state
-                this.gameState.addTower(tower);
-                
-                // Create tower sprite
-                const worldX = gridX * this.cellSize + this.cellSize/2;
-                const worldY = gridY * this.cellSize + this.cellSize/2;
-                
-                let towerSprite;
-                switch(tower.type) {
-                    case 'basic':
-                        towerSprite = this.add.image(worldX, worldY, 'basic-tower');
-                        break;
-                    case 'sniper':
-                        towerSprite = this.add.image(worldX, worldY, 'sniper-tower');
-                        break;
-                    case 'splash':
-                        towerSprite = this.add.image(worldX, worldY, 'splash-tower');
-                        break;
-                    default:
-                        towerSprite = this.add.image(worldX, worldY, 'basic-tower');
-                }
-                
-                // Scale tower to fit cell
-                towerSprite.setScale(this.cellSize/100 * 0.7);
-                
-                // Store reference to gridX and gridY for reference
-                towerSprite.setData('gridX', gridX);
-                towerSprite.setData('gridY', gridY);
-                towerSprite.setData('tower', tower);
-                
-                // Add to container
-                this.towerContainer.add(towerSprite);
-                
-                // Hide placement preview
-                this.towerPreview.setVisible(false);
-                this.rangeIndicator.setVisible(false);
-                
-                return true;
-            }
-            
-            removeTower(gridX, gridY) {
-                // Find tower at this grid position
-                const tower = this.gameState.getTower(gridX, gridY);
-                
-                if (!tower) {
-                    return false;
-                }
-                
-                // Remove from game state
-                if (this.gameState.removeTower(gridX, gridY)) {
-                    // Update map
-                    this.tdMap.removeTower(gridX, gridY);
-                    
-                    // Remove tower sprite
-                    this.towerContainer.getAll().forEach(sprite => {
-                        if (sprite.getData('gridX') === gridX && sprite.getData('gridY') === gridY) {
-                            sprite.destroy();
-                        }
-                    });
-                    
-                    return true;
-                }
-                
-                return false;
-            }
-            
-            cancelTowerPlacement() {
-                this.selectedTowerType = null;
-                this.towerPreview.setVisible(false);
-                this.rangeIndicator.setVisible(false);
-            }
-            
-            setupCameraControls() {
-                // Enable camera controls
-                const cam = this.cameras.main;
-                
-                // Set initial position to center of the map
-                const worldWidth = this.tdMap.width * this.cellSize;
-                const worldHeight = this.tdMap.height * this.cellSize;
-                cam.centerOn(worldWidth/2, worldHeight/2);
-                
-                // Drag to pan
-                this.input.on('pointerdown', (pointer) => {
-                    // If middle button or right button (or holding space), start panning
-                    if (pointer.middleButtonDown() || 
-                        (pointer.rightButtonDown() && !this.input.keyboard.checkDown(this.input.keyboard.addKey('SHIFT'))) || 
-                        this.input.keyboard.checkDown(this.input.keyboard.addKey('SPACE'))) {
-                        
-                        this.isDragging = true;
-                        this.dragStartX = pointer.x;
-                        this.dragStartY = pointer.y;
-                    }
-                });
-                
-                this.input.on('pointermove', (pointer) => {
-                    if (this.isDragging) {
-                        const dx = (pointer.x - this.dragStartX) / cam.zoom;
-                        const dy = (pointer.y - this.dragStartY) / cam.zoom;
-                        
-                        cam.scrollX -= dx;
-                        cam.scrollY -= dy;
-                        
-                        this.dragStartX = pointer.x;
-                        this.dragStartY = pointer.y;
-                    }
-                });
-                
-                this.input.on('pointerup', () => {
-                    this.isDragging = false;
-                });
-                
-                // Zoom with mouse wheel
-                this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
-                    const zoomFactor = 0.1;
-                    const newZoom = deltaY > 0 ? 
-                        Math.max(0.5, cam.zoom - zoomFactor) : 
-                        Math.min(2, cam.zoom + zoomFactor);
-                    
-                    this.zoomCamera(newZoom, pointer.worldX, pointer.worldY);
-                });
-                
-                // Touch controls for mobile
-                this.input.addPointer(1); // Ensure we track 2 pointers for pinch
-                
-                this.input.on('pointermove', (pointer) => {
-                    if (this.input.pointer1.isDown && this.input.pointer2.isDown) {
-                        // This is a pinch
-                        const currentDistance = Phaser.Math.Distance.Between(
-                            this.input.pointer1.x, this.input.pointer1.y,
-                            this.input.pointer2.x, this.input.pointer2.y
-                        );
-                        
-                        if (this.pinchDistance > 0) {
-                            const distanceDiff = currentDistance - this.pinchDistance;
-                            const zoomFactor = 0.01;
-                            
-                            // Calculate center of pinch for zoom focus
-                            const pinchCenterX = (this.input.pointer1.worldX + this.input.pointer2.worldX) / 2;
-                            const pinchCenterY = (this.input.pointer1.worldY + this.input.pointer2.worldY) / 2;
-                            
-                            const newZoom = distanceDiff > 0 ? 
-                                Math.min(2, cam.zoom + (zoomFactor * distanceDiff)) : 
-                                Math.max(0.5, cam.zoom + (zoomFactor * distanceDiff));
-                            
-                            this.zoomCamera(newZoom, pinchCenterX, pinchCenterY);
-                        }
-                        
-                        this.pinchDistance = currentDistance;
-                        this.isDragging = false; // Disable drag during pinch
-                    }
-                });
-                
-                this.input.on('pointerup', () => {
-                    if (!this.input.pointer1.isDown || !this.input.pointer2.isDown) {
-                        this.pinchDistance = 0;
-                    }
-                });
-                
-                // Add key controls for zoom
-                this.zoomInKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PLUS);
-                this.zoomOutKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.MINUS);
-                
-                // Add key controls for panning
-                this.cursors = this.input.keyboard.createCursorKeys();
-            }
-            
-            zoomCamera(newZoom, focusX, focusY) {
-                // Store the pre-zoom camera position and focus point
-                const cam = this.cameras.main;
-                const oldZoom = cam.zoom;
-                
-                // Set the new zoom level
-                cam.zoom = newZoom;
-                this.currentZoom = newZoom;
-                
-                // Update camera position to maintain focus point
-                if (focusX !== undefined && focusY !== undefined) {
-                    const zoomFactor = newZoom / oldZoom;
-                    
-                    // Calculate how much the camera should move to maintain focus
-                    const offsetX = (focusX - cam.worldView.centerX) * (1 - 1 / zoomFactor);
-                    const offsetY = (focusY - cam.worldView.centerY) * (1 - 1 / zoomFactor);
-                    
-                    cam.scrollX += offsetX;
-                    cam.scrollY += offsetY;
-                }
-                
-                // Update text display to show current zoom level
-                const infoPanel = document.getElementById('info-panel');
-                infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${newZoom.toFixed(2)}x`;
             }
             
             update(time, delta) {
-                // Keyboard controls for camera
-                if (this.cursors) {
-                    const speed = 10 / this.cameras.main.zoom;
-                    
-                    if (this.cursors.left.isDown) {
-                        this.cameras.main.scrollX -= speed;
-                    } else if (this.cursors.right.isDown) {
-                        this.cameras.main.scrollX += speed;
-                    }
-                    
-                    if (this.cursors.up.isDown) {
-                        this.cameras.main.scrollY -= speed;
-                    } else if (this.cursors.down.isDown) {
-                        this.cameras.main.scrollY += speed;
-                    }
+                // Move mooks along their paths
+                this.updateMooks(delta);
+                
+                // Update towers to attack mooks
+                this.updateTowers(time);
+                
+                // Check for end of wave if all mooks are gone
+                if (this.isWaveInProgress && this.mooks.length === 0) {
+                    this.checkWaveEnd();
                 }
+            }
+            
+            updateMooks(delta) {
+                // Convert delta from ms to seconds
+                const deltaSeconds = delta / 1000;
                 
-                // Keyboard zoom controls
-                if (this.zoomInKey && this.zoomInKey.isDown) {
-                    const newZoom = Math.min(2, this.cameras.main.zoom + 0.01);
-                    this.zoomCamera(newZoom);
-                } else if (this.zoomOutKey && this.zoomOutKey.isDown) {
-                    const newZoom = Math.max(0.5, this.cameras.main.zoom - 0.01);
-                    this.zoomCamera(newZoom);
-                }
-                
-                // Update game state (this already handles tower attacks in GameState.updateTowers)
-                this.gameState.update(time, delta);
-                
-                // Update mook sprites
-                this.updateMookSprites();
-                
-                // Handle tower attacks and their visual effects
-                if (this.gameState.towers && this.gameState.towers.length > 0) {
-                    for (const tower of this.gameState.towers) {
-                        // Check if tower can fire
-                        if (tower.canFire(time)) {
-                            // Find a target
-                            const target = tower.findTarget(this.gameState.mooks, this.cellSize);
-                            if (target) {
-                                // Apply damage from tower to target
-                                const damage = tower.fire(time);
-                                
-                                // Handle splash damage
-                                if (tower.splashRadius > 0) {
-                                    // Find all mooks in splash radius
-                                    const splashedMooks = this.gameState.mooks.filter(mook => {
-                                        if (!mook.active || mook.reachedEnd) return false;
-                                        if (mook === target) return true; // Direct target always gets hit
-                                        
-                                        const dx = Math.abs(mook.position.x - target.position.x);
-                                        const dy = Math.abs(mook.position.y - target.position.y);
-                                        return dx <= tower.splashRadius && dy <= tower.splashRadius;
-                                    });
-                                    
-                                    // Apply damage to all mooks in splash radius
-                                    const attackResults = [];
-                                    for (const mook of splashedMooks) {
-                                        const distanceRatio = mook === target ? 1 : 0.5; // Reduced damage for splash
-                                        const isDead = mook.takeDamage(damage * distanceRatio);
-                                        if (isDead) {
-                                            this.gameState.mookKilled(mook);
-                                            attackResults.push({
-                                                mook,
-                                                isDead: true
-                                            });
-                                        } else {
-                                            attackResults.push({
-                                                mook,
-                                                isDead: false
-                                            });
-                                        }
-                                    }
-                                    
-                                    // Create visual effects
-                                    this.createTowerAttackEffects(tower, attackResults);
-                                } else {
-                                    // Direct damage to a single target
-                                    const isDead = target.takeDamage(damage);
-                                    if (isDead) {
-                                        this.gameState.mookKilled(target);
-                                    }
-                                    
-                                    // Create visual effects
-                                    this.createTowerAttackEffects(tower, [{
-                                        mook: target,
-                                        isDead
-                                    }]);
-                                }
+                // Process mooks in reverse order for safe removal
+                for (let i = this.mooks.length - 1; i >= 0; i--) {
+                    const mook = this.mooks[i];
+                    
+                    // Get current and next path points
+                    const currentPathPoint = mook.path[mook.pathIndex];
+                    const nextPathPoint = mook.path[mook.pathIndex + 1];
+                    
+                    if (nextPathPoint) {
+                        // Calculate direction to next point
+                        const dirX = nextPathPoint.x - currentPathPoint.x;
+                        const dirY = nextPathPoint.y - currentPathPoint.y;
+                        
+                        // Calculate distance to move this frame
+                        const distanceToMove = mook.speed * deltaSeconds;
+                        
+                        // Calculate new position
+                        const currentX = mook.sprite.x;
+                        const currentY = mook.sprite.y;
+                        
+                        const targetX = nextPathPoint.x * this.mapConfig.tileSize + this.mapConfig.tileSize / 2;
+                        const targetY = nextPathPoint.y * this.mapConfig.tileSize + this.mapConfig.tileSize / 2;
+                        
+                        const distance = Math.sqrt(
+                            Math.pow(targetX - currentX, 2) + 
+                            Math.pow(targetY - currentY, 2)
+                        );
+                        
+                        if (distance <= distanceToMove * this.mapConfig.tileSize) {
+                            // Reached next path point
+                            mook.sprite.x = targetX;
+                            mook.sprite.y = targetY;
+                            mook.healthBar.x = targetX;
+                            mook.healthBar.y = targetY - 15;
+                            
+                            // Move to next path point
+                            mook.pathIndex++;
+                            
+                            // Check if reached end of path
+                            if (mook.pathIndex >= mook.path.length - 1) {
+                                // Mook reached the exit
+                                this.mookReachedExit(mook);
+                                this.mooks.splice(i, 1);
                             }
+                        } else {
+                            // Move towards next point
+                            const moveRatio = distanceToMove * this.mapConfig.tileSize / distance;
+                            const moveX = (targetX - currentX) * moveRatio;
+                            const moveY = (targetY - currentY) * moveRatio;
+                            
+                            mook.sprite.x += moveX;
+                            mook.sprite.y += moveY;
+                            mook.healthBar.x += moveX;
+                            mook.healthBar.y += moveY;
                         }
                     }
+                    
+                    // Check if mook is dead
+                    if (mook.health <= 0) {
+                        // Remove mook
+                        mook.sprite.destroy();
+                        mook.healthBar.destroy();
+                        this.mooks.splice(i, 1);
+                        
+                        // Award resources
+                        const reward = 10;
+                        this.resources += reward;
+                        this.resourcesText.setText('Resources: ' + this.resources);
+                    }
+                }
+            }
+            
+            updateTowers(time) {
+                // Check each tower for targets in range
+                this.towers.forEach(tower => {
+                    // Check if tower can attack (cooldown)
+                    const attackCooldown = 1000 / tower.attackSpeed;
+                    if (time - tower.lastAttackTime < attackCooldown) {
+                        return;
+                    }
+                    
+                    // Find closest mook in range
+                    let closestMook = null;
+                    let closestDistance = Infinity;
+                    
+                    this.mooks.forEach(mook => {
+                        const distance = Phaser.Math.Distance.Between(
+                            tower.sprite.x, tower.sprite.y,
+                            mook.sprite.x, mook.sprite.y
+                        );
+                        
+                        const towerRange = tower.range * this.mapConfig.tileSize;
+                        
+                        if (distance <= towerRange && distance < closestDistance) {
+                            closestMook = mook;
+                            closestDistance = distance;
+                        }
+                    });
+                    
+                    if (closestMook) {
+                        // Tower can attack
+                        tower.lastAttackTime = time;
+                        
+                        // Create attack visual
+                        const line = this.add.line(
+                            0, 0,
+                            tower.sprite.x, tower.sprite.y,
+                            closestMook.sprite.x, closestMook.sprite.y,
+                            0xffffff
+                        );
+                        line.setOrigin(0, 0);
+                        
+                        // Fade out attack visual
+                        this.tweens.add({
+                            targets: line,
+                            alpha: 0,
+                            duration: 100,
+                            onComplete: () => {
+                                line.destroy();
+                            }
+                        });
+                        
+                        // Deal damage to mook
+                        closestMook.health -= tower.damage;
+                        
+                        // Update health bar
+                        const healthPercent = Math.max(0, closestMook.health / closestMook.maxHealth);
+                        closestMook.healthBar.width = 30 * healthPercent;
+                        closestMook.healthBar.fillColor = this.getHealthColor(healthPercent);
+                    }
+                });
+            }
+            
+            getHealthColor(percent) {
+                // Red to yellow to green based on health percentage
+                if (percent < 0.3) {
+                    return 0xff0000; // Red
+                } else if (percent < 0.6) {
+                    return 0xffff00; // Yellow
+                } else {
+                    return 0x00ff00; // Green
+                }
+            }
+            
+            mookReachedExit(mook) {
+                // Reduce player lives
+                this.lives--;
+                this.healthText.setText('Lives: ' + this.lives);
+                
+                // Clean up mook
+                mook.sprite.destroy();
+                mook.healthBar.destroy();
+                
+                // Check for game over
+                if (this.lives <= 0) {
+                    this.gameOver();
+                }
+            }
+            
+            gameOver() {
+                // Stop any spawning
+                if (this.spawnIntervalId) {
+                    clearInterval(this.spawnIntervalId);
                 }
                 
-                // Update info panel with gold and game state
-                const infoPanel = document.getElementById('info-panel');
-                if (!this.gameState.gameOver) {
-                    infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Wave: ${this.gameState.wave} - Zoom: ${this.currentZoom.toFixed(2)}x`;
-                }
+                // Show game over message
+                const gameOverText = this.add.text(
+                    this.sys.game.config.width / 2,
+                    this.sys.game.config.height / 2,
+                    'GAME OVER',
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '48px',
+                        color: '#ff0000',
+                        stroke: '#000000',
+                        strokeThickness: 6,
+                        align: 'center'
+                    }
+                ).setOrigin(0.5);
+                
+                // Add restart button
+                const restartButton = this.add.text(
+                    this.sys.game.config.width / 2,
+                    this.sys.game.config.height / 2 + 80,
+                    'Restart Game',
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '24px',
+                        color: '#ffffff',
+                        backgroundColor: '#222222',
+                        padding: {
+                            left: 20,
+                            right: 20,
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                ).setOrigin(0.5).setInteractive();
+                
+                restartButton.on('pointerdown', () => {
+                    this.scene.restart();
+                });
             }
         }
         
@@ -2608,8 +858,8 @@
             width: window.innerWidth,
             height: window.innerHeight,
             parent: 'game-container',
-            backgroundColor: '#222222',
-            scene: [MapScene],
+            backgroundColor: '#002200',
+            scene: [TowerDefenseMap],
             scale: {
                 mode: Phaser.Scale.RESIZE,
                 autoCenter: Phaser.Scale.CENTER_BOTH
