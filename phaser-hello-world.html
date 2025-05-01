@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phaser Interactive Demo v1.0.0</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2d2d2d;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #version-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 14px;
+        }
+        
+        #help-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        #error-display {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #version-info, #help-panel {
+                font-size: 12px;
+                padding: 5px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="version-info">Phaser Demo v1.0.0</div>
+    <div id="help-panel">
+        📌 Drag to pan<br>
+        🔍 Pinch to zoom<br>
+        🖱️ Click balls to interact
+    </div>
+    <div id="game-container"></div>
+    <div id="error-display"></div>
+
+    <!-- Error handling script -->
+    <script>
+        // Custom error handler to display errors in the page
+        const errorDisplay = document.getElementById('error-display');
+        
+        // Store original console methods
+        const originalConsoleError = console.error;
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        
+        // Override console.error
+        console.error = function() {
+            // Call original method
+            originalConsoleError.apply(console, arguments);
+            
+            // Display in our error div
+            const errorMessage = Array.from(arguments).join(' ');
+            displayError('ERROR: ' + errorMessage);
+        };
+        
+        // Override console.warn
+        console.warn = function() {
+            // Call original method
+            originalConsoleWarn.apply(console, arguments);
+            
+            // Display in our error div
+            const warnMessage = Array.from(arguments).join(' ');
+            displayError('WARNING: ' + warnMessage);
+        };
+        
+        // Handle window errors
+        window.addEventListener('error', function(e) {
+            displayError('EXCEPTION: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+            return false;
+        });
+        
+        // Handle promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            displayError('UNHANDLED PROMISE REJECTION: ' + e.reason);
+        });
+        
+        function displayError(message) {
+            errorDisplay.style.display = 'block';
+            const errorLine = document.createElement('div');
+            errorLine.textContent = message;
+            errorDisplay.appendChild(errorLine);
+            
+            // Scroll to bottom
+            errorDisplay.scrollTop = errorDisplay.scrollHeight;
+        }
+    </script>
+
+    <!-- Load Phaser library -->
+    <script src="vendors/phaser/phaser.min.js" onerror="displayError('Failed to load Phaser library. Check if the file exists at vendors/phaser/phaser.min.js')"></script>
+    
+    <!-- Game code -->
+    <script>
+        // Check if Phaser exists before continuing
+        if (typeof Phaser === 'undefined') {
+            displayError('Phaser is not defined! The Phaser library failed to load correctly.');
+        } else {
+            console.log('Phaser loaded successfully:', Phaser.VERSION);
+        }
+    
+        class MainScene extends Phaser.Scene {
+            constructor() {
+                super('MainScene');
+                this.balls = null;
+                this.staticBoxes = [];
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.pinchDistance = 0;
+                this.currentZoom = 1;
+            }
+            
+            preload() {
+                // Create logo texture programmatically
+                this.createLogoTexture('logo');
+                
+                const ballColors = [0xff0000, 0x00ff00, 0x0000ff];
+                
+                for (let i = 0; i < ballColors.length; i++) {
+                    const key = `ball${i}`;
+                    this.createBallTexture(key, ballColors[i]);
+                }
+                
+                // Create box textures
+                this.createBoxTexture('box1', 0xffaa00);
+                this.createBoxTexture('box2', 0x00ffaa);
+            }
+            
+            createLogoTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Draw P letter with gradient
+                graphics.fillGradientStyle(0x0088ff, 0x0044aa, 0x0066cc, 0x0022aa, 1);
+                graphics.fillCircle(50, 50, 40);
+                
+                // Add a white P
+                graphics.fillStyle(0xffffff, 1);
+                graphics.fillCircle(50, 50, 30);
+                graphics.fillStyle(0x0088ff, 1);
+                graphics.fillCircle(50, 50, 20);
+                graphics.fillStyle(0x000000, 0.7);
+                graphics.fillRect(55, 30, 15, 40);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createBallTexture(key, fillColor) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(fillColor, 1);
+                graphics.fillCircle(50, 50, 50);
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createBoxTexture(key, fillColor) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(fillColor, 1);
+                graphics.fillRect(0, 0, 100, 100);
+                
+                // Add a pattern to the box so zoom is more visible
+                graphics.lineStyle(4, 0xffffff, 0.8);
+                graphics.strokeRect(10, 10, 80, 80);
+                graphics.lineBetween(10, 10, 90, 90);
+                graphics.lineBetween(10, 90, 90, 10);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            create() {
+                try {
+                    // Create a world that's larger than the viewport
+                    const worldSize = 2000;
+                    this.cameras.main.setBounds(0, 0, worldSize, worldSize);
+                    this.physics.world.setBounds(0, 0, worldSize, worldSize);
+                    
+                    // Set a background with grid to make panning more obvious
+                    this.createGridBackground(worldSize, worldSize);
+                    
+                    this.add.text(worldSize/2, 50, 'Phaser Interactive Demo', { 
+                        fontFamily: 'Arial', 
+                        fontSize: 48, 
+                        color: '#ffffff',
+                        stroke: '#000000',
+                        strokeThickness: 6,
+                        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
+                    }).setOrigin(0.5, 0);
+                    
+                    // Add static boxes at specific positions
+                    this.createStaticBoxes(worldSize);
+                    
+                    // Add bouncing balls
+                    this.createBouncingBalls();
+                    
+                    // Set up input handling for camera control
+                    this.setupCameraControls();
+                    
+                    // Add debug info
+                    console.log("Scene creation completed successfully");
+                    console.log("Phaser Version:", Phaser.VERSION);
+                    console.log("Number of balls created:", this.balls.getChildren().length);
+                    
+                } catch (error) {
+                    console.error("Error in create method:", error);
+                    displayError("Create method failed: " + error.message);
+                }
+            }
+            
+            createGridBackground(width, height) {
+                // Create a grid background
+                const gridSize = 100;
+                const graphics = this.add.graphics();
+                
+                // Fill with a dark blue color
+                graphics.fillStyle(0x001a33);
+                graphics.fillRect(0, 0, width, height);
+                
+                // Draw grid lines
+                graphics.lineStyle(1, 0x0066cc, 0.3);
+                
+                // Draw vertical lines
+                for (let x = 0; x <= width; x += gridSize) {
+                    graphics.moveTo(x, 0);
+                    graphics.lineTo(x, height);
+                }
+                
+                // Draw horizontal lines
+                for (let y = 0; y <= height; y += gridSize) {
+                    graphics.moveTo(0, y);
+                    graphics.lineTo(width, y);
+                }
+                
+                graphics.strokePath();
+                
+                // Add coordinate indicators at grid intersections
+                for (let x = gridSize; x < width; x += gridSize * 5) {
+                    for (let y = gridSize; y < height; y += gridSize * 5) {
+                        this.add.text(x, y, `(${x},${y})`, {
+                            font: '12px Arial',
+                            fill: '#4499ff'
+                        }).setOrigin(0.5);
+                    }
+                }
+            }
+            
+            createStaticBoxes(worldSize) {
+                // Add some static boxes at fixed positions
+                const boxPositions = [
+                    { x: 300, y: 300 },
+                    { x: worldSize - 300, y: 300 },
+                    { x: 300, y: worldSize - 300 },
+                    { x: worldSize - 300, y: worldSize - 300 },
+                    { x: worldSize / 2, y: worldSize / 2 }
+                ];
+                
+                boxPositions.forEach((pos, index) => {
+                    const textureKey = index % 2 === 0 ? 'box1' : 'box2';
+                    const box = this.add.image(pos.x, pos.y, textureKey);
+                    box.setScale(1.5);
+                    
+                    // Add a label
+                    this.add.text(pos.x, pos.y, `Static Box ${index + 1}`, {
+                        fontFamily: 'Arial',
+                        fontSize: 16,
+                        color: '#ffffff',
+                        stroke: '#000000',
+                        strokeThickness: 3
+                    }).setOrigin(0.5);
+                    
+                    this.staticBoxes.push(box);
+                });
+            }
+            
+            createBouncingBalls() {
+                // Create bouncing balls with physics
+                this.balls = this.physics.add.group({
+                    bounceX: 1,
+                    bounceY: 1,
+                    collideWorldBounds: true,
+                    dragX: 10,
+                    dragY: 10
+                });
+                
+                const velocityRange = 300;
+                const ballPositions = [
+                    { x: 500, y: 500 },
+                    { x: 700, y: 500 },
+                    { x: 900, y: 500 }
+                ];
+                
+                for (let i = 0; i < 3; i++) {
+                    const ball = this.balls.create(
+                        ballPositions[i].x,
+                        ballPositions[i].y,
+                        `ball${i}`
+                    );
+                    
+                    ball.setCircle(40); 
+                    ball.setMass(1 + i); 
+                    ball.setScale(0.8);
+                    
+                    const velocityX = Phaser.Math.Between(-velocityRange, velocityRange);
+                    const velocityY = Phaser.Math.Between(-velocityRange, velocityRange);
+                    
+                    ball.setVelocity(velocityX, velocityY);
+                    
+                    ball.setInteractive();
+                    ball.on('pointerdown', () => this.onBallClick(ball));
+                }
+                
+                this.physics.add.collider(this.balls);
+                
+                // Add logo as a special ball
+                const logo = this.add.image(300, 300, 'logo').setScale(0.8);
+                
+                this.tweens.add({
+                    targets: logo,
+                    angle: 360,
+                    duration: 6000,
+                    ease: 'Linear',
+                    repeat: -1
+                });
+            }
+            
+            setupCameraControls() {
+                // Enable camera controls
+                const cam = this.cameras.main;
+                
+                // Set initial position to center of the world
+                const worldSize = 2000;
+                cam.centerOn(worldSize/2, worldSize/2);
+                
+                // Drag to pan
+                this.input.on('pointerdown', (pointer) => {
+                    if (pointer.button === 0) { // Left button
+                        this.isDragging = true;
+                        this.dragStartX = pointer.x;
+                        this.dragStartY = pointer.y;
+                    }
+                });
+                
+                this.input.on('pointermove', (pointer) => {
+                    if (this.isDragging) {
+                        const dx = (pointer.x - this.dragStartX) / cam.zoom;
+                        const dy = (pointer.y - this.dragStartY) / cam.zoom;
+                        
+                        cam.scrollX -= dx;
+                        cam.scrollY -= dy;
+                        
+                        this.dragStartX = pointer.x;
+                        this.dragStartY = pointer.y;
+                    }
+                });
+                
+                this.input.on('pointerup', () => {
+                    this.isDragging = false;
+                });
+                
+                // Zoom with mouse wheel or pinch
+                this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+                    const zoomFactor = 0.1;
+                    const newZoom = deltaY > 0 ? 
+                        Math.max(0.5, cam.zoom - zoomFactor) : 
+                        Math.min(2, cam.zoom + zoomFactor);
+                    
+                    this.zoomCamera(newZoom, pointer.worldX, pointer.worldY);
+                });
+                
+                // Touch controls for mobile
+                this.input.addPointer(1); // Ensure we track 2 pointers for pinch
+                
+                this.input.on('pointermove', (pointer) => {
+                    if (this.input.pointer1.isDown && this.input.pointer2.isDown) {
+                        // This is a pinch
+                        const currentDistance = Phaser.Math.Distance.Between(
+                            this.input.pointer1.x, this.input.pointer1.y,
+                            this.input.pointer2.x, this.input.pointer2.y
+                        );
+                        
+                        if (this.pinchDistance > 0) {
+                            const distanceDiff = currentDistance - this.pinchDistance;
+                            const zoomFactor = 0.01;
+                            
+                            // Calculate center of pinch for zoom focus
+                            const pinchCenterX = (this.input.pointer1.worldX + this.input.pointer2.worldX) / 2;
+                            const pinchCenterY = (this.input.pointer1.worldY + this.input.pointer2.worldY) / 2;
+                            
+                            const newZoom = distanceDiff > 0 ? 
+                                Math.min(2, cam.zoom + (zoomFactor * distanceDiff)) : 
+                                Math.max(0.5, cam.zoom + (zoomFactor * distanceDiff));
+                            
+                            this.zoomCamera(newZoom, pinchCenterX, pinchCenterY);
+                        }
+                        
+                        this.pinchDistance = currentDistance;
+                        this.isDragging = false; // Disable drag during pinch
+                    }
+                });
+                
+                this.input.on('pointerup', () => {
+                    if (!this.input.pointer1.isDown || !this.input.pointer2.isDown) {
+                        this.pinchDistance = 0;
+                    }
+                });
+                
+                // Add key controls for zoom
+                this.zoomInKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PLUS);
+                this.zoomOutKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.MINUS);
+                
+                // Add key controls for panning
+                this.cursors = this.input.keyboard.createCursorKeys();
+            }
+            
+            zoomCamera(newZoom, focusX, focusY) {
+                // Store the pre-zoom camera position and focus point
+                const cam = this.cameras.main;
+                const oldZoom = cam.zoom;
+                
+                // Set the new zoom level
+                cam.zoom = newZoom;
+                this.currentZoom = newZoom;
+                
+                // Update camera position to maintain focus point
+                if (focusX !== undefined && focusY !== undefined) {
+                    const zoomFactor = newZoom / oldZoom;
+                    
+                    // Calculate how much the camera should move to maintain focus
+                    const offsetX = (focusX - cam.worldView.centerX) * (1 - 1 / zoomFactor);
+                    const offsetY = (focusY - cam.worldView.centerY) * (1 - 1 / zoomFactor);
+                    
+                    cam.scrollX += offsetX;
+                    cam.scrollY += offsetY;
+                }
+                
+                // Update text display to show current zoom level
+                const zoomText = document.getElementById('version-info');
+                zoomText.textContent = `Phaser Demo v1.0.0 - Zoom: ${newZoom.toFixed(2)}x`;
+            }
+            
+            onBallClick(ball) {
+                // Don't process ball clicks during camera drag
+                if (this.isDragging) return;
+                
+                const newVelX = Phaser.Math.Between(-300, 300);
+                const newVelY = Phaser.Math.Between(-300, 300);
+                
+                ball.setVelocity(newVelX, newVelY);
+                
+                // Visual feedback on click
+                const flashTween = this.tweens.add({
+                    targets: ball,
+                    alpha: 0.3,
+                    duration: 100,
+                    yoyo: true,
+                    repeat: 1
+                });
+                
+                const scaleTween = this.tweens.add({
+                    targets: ball,
+                    scale: 1.2,
+                    duration: 200,
+                    yoyo: true
+                });
+            }
+            
+            update() {
+                // Keyboard controls for camera
+                if (this.cursors) {
+                    const speed = 10 / this.cameras.main.zoom;
+                    
+                    if (this.cursors.left.isDown) {
+                        this.cameras.main.scrollX -= speed;
+                    } else if (this.cursors.right.isDown) {
+                        this.cameras.main.scrollX += speed;
+                    }
+                    
+                    if (this.cursors.up.isDown) {
+                        this.cameras.main.scrollY -= speed;
+                    } else if (this.cursors.down.isDown) {
+                        this.cameras.main.scrollY += speed;
+                    }
+                }
+                
+                // Keyboard zoom controls
+                if (this.zoomInKey && this.zoomInKey.isDown) {
+                    const newZoom = Math.min(2, this.cameras.main.zoom + 0.01);
+                    this.zoomCamera(newZoom);
+                } else if (this.zoomOutKey && this.zoomOutKey.isDown) {
+                    const newZoom = Math.max(0.5, this.cameras.main.zoom - 0.01);
+                    this.zoomCamera(newZoom);
+                }
+                
+                // Regulate ball speeds
+                this.balls.children.each(function(ball) {
+                    const speed = ball.body.velocity.length();
+                    const maxSpeed = 400;
+                    
+                    if (speed > maxSpeed) {
+                        const factor = maxSpeed / speed;
+                        ball.body.velocity.x *= factor;
+                        ball.body.velocity.y *= factor;
+                    }
+                    
+                    const minSpeed = 100;
+                    if (speed < minSpeed) {
+                        const factor = minSpeed / Math.max(1, speed);
+                        ball.body.velocity.x *= factor;
+                        ball.body.velocity.y *= factor;
+                    }
+                }, this);
+            }
+        }
+        
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game-container',
+            backgroundColor: '#001a33',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { x: 0, y: 0 },
+                    debug: false
+                }
+            },
+            scene: [MainScene],
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                autoCenter: Phaser.Scale.CENTER_BOTH
+            }
+        };
+        
+        try {
+            const game = new Phaser.Game(config);
+            
+            // Add game to window for debugging
+            window.game = game;
+            
+            console.log("Game created successfully");
+            
+            // Add info about renderer to error display for debugging
+            game.events.once('ready', function() {
+                const rendererInfo = game.renderer.type === Phaser.CANVAS ? 
+                    "Using Canvas renderer" : 
+                    "Using WebGL renderer";
+                
+                console.log(rendererInfo);
+            });
+            
+            // Handle window resize events
+            window.addEventListener('resize', function() {
+                game.scale.resize(window.innerWidth, window.innerHeight);
+            });
+            
+        } catch (error) {
+            console.error("Failed to create game:", error);
+            displayError("Game initialization failed: " + error.message);
+        }
+    </script>
+</body>
+</html>
