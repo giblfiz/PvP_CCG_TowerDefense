@@ -345,6 +345,8 @@
                 this.active = true;
                 this.reachedEnd = false;
                 this.markedForRemoval = false;
+                this.sprite = null;     // Initialize sprite reference to null
+                this.healthBar = null;  // Initialize healthBar reference to null
                 
                 // Set stats based on mook type
                 switch(type) {
@@ -1833,25 +1835,51 @@
                     
                     // Log current mook state
                     console.log(`BEFORE CLEANUP - Total mooks: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}, With sprite: ${this.gameState.mooks.filter(m => m.sprite).length}`);
+                    console.log(`CONTAINER CHECK - Total sprites in container: ${this.mookContainer.list.length}`);
                     
                     // Force immediate cleanup of dead mooks
                     const beforeCount = this.gameState.mooks.length;
                     let destroyedCount = 0;
                     
-                    // First destroy any sprite for inactive mooks
+                    // FIRST PASS: Check for any orphaned sprites - sprites in container with no mook reference
+                    const activeMookSprites = new Set();
+                    this.gameState.mooks.forEach(mook => {
+                        if (mook.sprite) {
+                            activeMookSprites.add(mook.sprite);
+                        }
+                    });
+                    
+                    console.log(`Active mook sprites count: ${activeMookSprites.size}`);
+                    
+                    // Find orphaned sprites (in container but not referenced by any mook)
+                    const containerList = [...this.mookContainer.list];
+                    for (const sprite of containerList) {
+                        if (!activeMookSprites.has(sprite)) {
+                            console.log(`Found orphaned sprite in container - removing it`);
+                            this.mookContainer.remove(sprite);
+                            sprite.destroy(true);
+                            destroyedCount++;
+                        }
+                    }
+                    
+                    // SECOND PASS: Process inactive mooks normally
                     for (let i = this.gameState.mooks.length - 1; i >= 0; i--) {
                         const mook = this.gameState.mooks[i];
                         
-                        // Fix: Make sure any inactive mook (regardless of markedForRemoval status) gets its sprite destroyed
                         if (!mook.active) {
+                            console.log(`Processing inactive mook: type=${mook.type}, index=${i}, hasSprite=${!!mook.sprite}`);
+                            
                             // Only attempt to remove sprite if it exists
                             if (mook.sprite) {
                                 try {
-                                    // Debug logging
-                                    console.log(`Destroying sprite for mook type ${mook.type} at index ${i}`);
+                                    // Check if sprite is still in container
+                                    const inContainer = this.mookContainer.list.includes(mook.sprite);
+                                    console.log(`Mook sprite in container? ${inContainer}`);
                                     
                                     // Remove from container first (this is critical)
-                                    this.mookContainer.remove(mook.sprite);
+                                    if (inContainer) {
+                                        this.mookContainer.remove(mook.sprite);
+                                    }
                                     
                                     // Then properly destroy the sprite and its children
                                     mook.sprite.destroy(true);
@@ -1866,6 +1894,10 @@
                                     destroyedCount++;
                                 } catch (e) {
                                     console.error(`Error destroying mook sprite: ${e.message}`);
+                                    // Still try to clear references
+                                    mook.sprite = null;
+                                    mook.healthBar = null;
+                                    mook.markedForRemoval = true;
                                 }
                             } else {
                                 // If sprite is already null, just mark for removal to be safe
@@ -1879,12 +1911,32 @@
                     const removedCount = this.gameState.mooks.length - remainingMooks.length;
                     this.gameState.mooks = remainingMooks;
                     
-                    // Final check to make sure all mooks in the array are active
-                    const stillInactive = this.gameState.mooks.filter(m => !m.active).length;
+                    // FINAL CHECK: Emergency container cleanup if container still has sprites
+                    console.log(`FINAL CHECK - Container sprites: ${this.mookContainer.list.length}, Active mooks: ${this.gameState.mooks.length}`);
+                    
+                    if (this.mookContainer.list.length > this.gameState.mooks.length) {
+                        console.log("EMERGENCY CLEANUP - Container still has extra sprites");
+                        // Recreate the set of valid sprites
+                        const validSprites = new Set();
+                        this.gameState.mooks.forEach(mook => {
+                            if (mook.sprite) validSprites.add(mook.sprite);
+                        });
+                        
+                        // Remove any sprites not referenced by active mooks
+                        const remainingList = [...this.mookContainer.list];
+                        for (const sprite of remainingList) {
+                            if (!validSprites.has(sprite)) {
+                                console.log("Removing extra sprite from container");
+                                this.mookContainer.remove(sprite);
+                                sprite.destroy(true);
+                                destroyedCount++;
+                            }
+                        }
+                    }
                     
                     // Log detailed results
                     console.log(`Force cleanup complete: Removed ${removedCount} mooks, destroyed ${destroyedCount} sprites`);
-                    console.log(`AFTER CLEANUP - Total mooks: ${this.gameState.mooks.length}, Still inactive: ${stillInactive}`);
+                    console.log(`AFTER CLEANUP - Container size: ${this.mookContainer.list.length}, Active mooks: ${this.gameState.mooks.length}`);
                     
                     // Display to user
                     displayError(`Cleanup complete: Removed ${removedCount} mooks, destroyed ${destroyedCount} sprites`);
@@ -2075,24 +2127,49 @@
                         delay: 2000,
                         callback: () => {
                             // Log cleanup status
-                            console.log(`PERIODIC CLEANUP - Total before: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}`);
+                            console.log(`PERIODIC CLEANUP - Total before: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}, Container size: ${this.mookContainer.list.length}`);
                             
-                            // First attempt to clean up any inactive mooks that still have sprites
                             let destroyedCount = 0;
+                            
+                            // FIRST PASS: Check for orphaned sprites (similar to force cleanup button)
+                            const activeMookSprites = new Set();
+                            this.gameState.mooks.forEach(mook => {
+                                if (mook.sprite) {
+                                    activeMookSprites.add(mook.sprite);
+                                }
+                            });
+                            
+                            // Find any sprites in container not referenced by mooks
+                            const containerList = [...this.mookContainer.list];
+                            for (const sprite of containerList) {
+                                if (!activeMookSprites.has(sprite)) {
+                                    console.log("Periodic cleanup: Found orphaned sprite in container - removing it");
+                                    this.mookContainer.remove(sprite);
+                                    sprite.destroy(true);
+                                    destroyedCount++;
+                                }
+                            }
+                            
+                            // SECOND PASS: Process inactive mooks with sprites
                             for (let i = this.gameState.mooks.length - 1; i >= 0; i--) {
                                 const mook = this.gameState.mooks[i];
                                 if (!mook.active && mook.sprite) {
                                     try {
-                                        // Make sure we're not already processing it
                                         if (!mook.markedForRemoval) {
+                                            // Mark first time we see an inactive mook
                                             mook.markedForRemoval = true;
                                             console.log(`Periodic cleanup: marking mook ${mook.type} for removal`);
                                         } else {
-                                            // Already marked, so let's clean it up now
+                                            // On second pass, destroy the sprite
                                             console.log(`Periodic cleanup: destroying sprite for mook ${mook.type}`);
                                             
+                                            // Check if sprite is still in container
+                                            const inContainer = this.mookContainer.list.includes(mook.sprite);
+                                            
                                             // Remove from container first
-                                            this.mookContainer.remove(mook.sprite);
+                                            if (inContainer) {
+                                                this.mookContainer.remove(mook.sprite);
+                                            }
                                             
                                             // Destroy the sprite and its children
                                             mook.sprite.destroy(true);
@@ -2102,19 +2179,31 @@
                                         }
                                     } catch (e) {
                                         console.error(`Error in periodic cleanup: ${e.message}`);
+                                        // Still try to clear references on error
+                                        mook.sprite = null;
+                                        mook.healthBar = null;
                                     }
                                 }
                             }
                             
                             // Then filter out inactive mooks that have no sprite left
                             const beforeCount = this.gameState.mooks.length;
+                            
+                            // Only remove inactive mooks that have no sprites
                             this.gameState.mooks = this.gameState.mooks.filter(mook => 
                                 mook.active || mook.sprite !== null
                             );
                             const afterCount = this.gameState.mooks.length;
                             
+                            // Log results
                             if (destroyedCount > 0 || beforeCount !== afterCount) {
-                                console.log(`Periodic cleanup: Removed ${beforeCount - afterCount} mooks, destroyed ${destroyedCount} sprites, ${afterCount} mooks remaining`);
+                                console.log(`Periodic cleanup: Removed ${beforeCount - afterCount} mooks, destroyed ${destroyedCount} sprites`);
+                                console.log(`Container size after cleanup: ${this.mookContainer.list.length}`);
+                            }
+                            
+                            // VALIDATION - make sure container and game state are in sync
+                            if (this.mookContainer.list.length > this.gameState.mooks.filter(m => m.sprite).length) {
+                                console.log("WARNING: Container has more sprites than mooks - possible memory leak");
                             }
                         },
                         loop: true
