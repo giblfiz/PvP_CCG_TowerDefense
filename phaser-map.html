@@ -155,7 +155,7 @@
     <div id="hud-panel">
         <div class="stat">
             <span class="stat-label">Gold:</span>
-            <span class="stat-value" id="gold-value">100</span>
+            <span class="stat-value" id="gold-value">600</span>
         </div>
         <div class="stat">
             <span class="stat-label">Lives:</span>
@@ -499,7 +499,7 @@
          */
         class GameState {
             constructor() {
-                this.gold = 100;
+                this.gold = 600;
                 this.lives = 20;
                 this.wave = 0;
                 this.towers = [];
@@ -855,13 +855,13 @@
             createRangeTexture() {
                 const graphics = this.make.graphics();
                 
-                // Semi-transparent circle
+                // Semi-transparent circle - make it centered properly
                 graphics.fillStyle(0xffffff, 0.2);
-                graphics.fillCircle(0, 0, 100);
+                graphics.fillCircle(100, 100, 100);
                 
                 // Border
                 graphics.lineStyle(2, 0xffffff, 0.5);
-                graphics.strokeCircle(0, 0, 100);
+                graphics.strokeCircle(100, 100, 100);
                 
                 graphics.generateTexture('range-indicator', 200, 200);
                 graphics.clear();
@@ -970,6 +970,7 @@
                 
                 // Preview range indicator
                 this.rangeIndicator = this.add.image(0, 0, 'range-indicator');
+                this.rangeIndicator.setOrigin(0.5, 0.5);
                 this.rangeIndicator.setVisible(false);
                 
                 // Tower sprite for placement preview
