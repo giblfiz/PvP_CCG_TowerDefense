@@ -190,6 +190,7 @@
 
     <!-- Error handling script -->
     <script>
+        
         // Custom error handler to display errors in the page
         const errorDisplay = document.getElementById('error-display');
         
@@ -220,13 +221,15 @@
         
         // Handle window errors
         window.addEventListener('error', function(e) {
-            displayError('EXCEPTION: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+            const errorMsg = 'EXCEPTION: ' + e.message + ' at ' + e.filename + ':' + e.lineno;
+            displayError(errorMsg);
             return false;
         });
         
         // Handle promise rejections
         window.addEventListener('unhandledrejection', function(e) {
-            displayError('UNHANDLED PROMISE REJECTION: ' + e.reason);
+            const errorMsg = 'UNHANDLED PROMISE REJECTION: ' + e.reason;
+            displayError(errorMsg);
         });
         
         function displayError(message) {
@@ -1756,32 +1759,63 @@
                 cleanupButton.addEventListener('click', () => {
                     console.log('Force cleanup button clicked');
                     
+                    // Log current mook state
+                    console.log(`BEFORE CLEANUP - Total mooks: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}, With sprite: ${this.gameState.mooks.filter(m => m.sprite).length}`);
+                    
                     // Force immediate cleanup of dead mooks
                     const beforeCount = this.gameState.mooks.length;
                     let destroyedCount = 0;
                     
-                    // First destroy any sprite for inactive mooks that are still present
+                    // First destroy any sprite for inactive mooks
                     for (let i = this.gameState.mooks.length - 1; i >= 0; i--) {
                         const mook = this.gameState.mooks[i];
-                        if (!mook.active && mook.sprite) {
-                            // Remove from container first
-                            this.mookContainer.remove(mook.sprite);
-                            
-                            // Then destroy the sprite and its children
-                            mook.sprite.destroy(true);
-                            mook.sprite = null;
-                            mook.healthBar = null;
-                            console.log(`Force cleanup: destroyed sprite for mook of type ${mook.type}`);
-                            destroyedCount++;
+                        
+                        // Fix: Make sure any inactive mook (regardless of markedForRemoval status) gets its sprite destroyed
+                        if (!mook.active) {
+                            // Only attempt to remove sprite if it exists
+                            if (mook.sprite) {
+                                try {
+                                    // Debug logging
+                                    console.log(`Destroying sprite for mook type ${mook.type} at index ${i}`);
+                                    
+                                    // Remove from container first (this is critical)
+                                    this.mookContainer.remove(mook.sprite);
+                                    
+                                    // Then properly destroy the sprite and its children
+                                    mook.sprite.destroy(true);
+                                    
+                                    // Clear references to allow garbage collection
+                                    mook.sprite = null;
+                                    mook.healthBar = null;
+                                    
+                                    // Mark as fully processed
+                                    mook.markedForRemoval = true;
+                                    
+                                    destroyedCount++;
+                                } catch (e) {
+                                    console.error(`Error destroying mook sprite: ${e.message}`);
+                                }
+                            } else {
+                                // If sprite is already null, just mark for removal to be safe
+                                mook.markedForRemoval = true;
+                            }
                         }
                     }
                     
-                    // Then filter out all inactive mooks
-                    this.gameState.mooks = this.gameState.mooks.filter(mook => mook.active);
-                    const afterCount = this.gameState.mooks.length;
+                    // Then remove ALL inactive mooks from the array completely
+                    const remainingMooks = this.gameState.mooks.filter(mook => mook.active);
+                    const removedCount = this.gameState.mooks.length - remainingMooks.length;
+                    this.gameState.mooks = remainingMooks;
                     
-                    console.log(`Force cleanup: Removed ${beforeCount - afterCount} mooks, ${afterCount} remaining, Destroyed ${destroyedCount} sprites`);
-                    displayError(`Cleanup complete: Removed ${beforeCount - afterCount} mooks, ${afterCount} remaining`);
+                    // Final check to make sure all mooks in the array are active
+                    const stillInactive = this.gameState.mooks.filter(m => !m.active).length;
+                    
+                    // Log detailed results
+                    console.log(`Force cleanup complete: Removed ${removedCount} mooks, destroyed ${destroyedCount} sprites`);
+                    console.log(`AFTER CLEANUP - Total mooks: ${this.gameState.mooks.length}, Still inactive: ${stillInactive}`);
+                    
+                    // Display to user
+                    displayError(`Cleanup complete: Removed ${removedCount} mooks, destroyed ${destroyedCount} sprites`);
                 });
             }
             
@@ -1889,6 +1923,11 @@
             }
             
             updateMookSprites() {
+                // Log mooks count start occasionally
+                if (Math.random() < 0.05) { // Only log occasionally to avoid spam
+                    console.log(`MOOK STATE - Total: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}, With sprites: ${this.gameState.mooks.filter(m => m.sprite).length}`);
+                }
+                
                 // Update positions of all mook sprites and clean up dead mooks
                 for (const mook of this.gameState.mooks) {
                     if (mook.sprite) {
@@ -1903,15 +1942,24 @@
                                 
                                 // Delay removal to allow death effects to play
                                 this.time.delayedCall(1000, () => {
-                                    console.log(`Destroying mook sprite: ${mook.type}`);
+                                    console.log(`Delayed call executing for mook: ${mook.type}, has sprite: ${!!mook.sprite}`);
+                                    
                                     if (mook.sprite) {
-                                        // Remove from container first
-                                        this.mookContainer.remove(mook.sprite);
-                                        
-                                        // Then destroy the sprite and its children
-                                        mook.sprite.destroy(true);
-                                        mook.sprite = null;
-                                        mook.healthBar = null;
+                                        try {
+                                            // Remove from container first
+                                            this.mookContainer.remove(mook.sprite);
+                                            
+                                            // Then destroy the sprite and its children
+                                            mook.sprite.destroy(true);
+                                            mook.sprite = null;
+                                            mook.healthBar = null;
+                                            
+                                            console.log(`Successfully destroyed mook sprite: ${mook.type}`);
+                                        } catch (e) {
+                                            console.error(`Error destroying mook sprite: ${e.message}`);
+                                        }
+                                    } else {
+                                        console.warn(`Cannot destroy sprite for mook ${mook.type}: sprite is null`);
                                     }
                                 });
                             } else {
@@ -1949,23 +1997,58 @@
                 
                 // Clean up the mooks array periodically to remove those fully processed
                 if (this.gameState.waveActive && this.cleanupTimer === undefined) {
+                    console.log('Setting up periodic cleanup timer');
+                    
                     this.cleanupTimer = this.time.addEvent({
                         delay: 2000,
                         callback: () => {
-                            // Filter out inactive mooks that have had their sprites removed
+                            // Log cleanup status
+                            console.log(`PERIODIC CLEANUP - Total before: ${this.gameState.mooks.length}, Active: ${this.gameState.mooks.filter(m => m.active).length}, Inactive: ${this.gameState.mooks.filter(m => !m.active).length}`);
+                            
+                            // First attempt to clean up any inactive mooks that still have sprites
+                            let destroyedCount = 0;
+                            for (let i = this.gameState.mooks.length - 1; i >= 0; i--) {
+                                const mook = this.gameState.mooks[i];
+                                if (!mook.active && mook.sprite) {
+                                    try {
+                                        // Make sure we're not already processing it
+                                        if (!mook.markedForRemoval) {
+                                            mook.markedForRemoval = true;
+                                            console.log(`Periodic cleanup: marking mook ${mook.type} for removal`);
+                                        } else {
+                                            // Already marked, so let's clean it up now
+                                            console.log(`Periodic cleanup: destroying sprite for mook ${mook.type}`);
+                                            
+                                            // Remove from container first
+                                            this.mookContainer.remove(mook.sprite);
+                                            
+                                            // Destroy the sprite and its children
+                                            mook.sprite.destroy(true);
+                                            mook.sprite = null;
+                                            mook.healthBar = null;
+                                            destroyedCount++;
+                                        }
+                                    } catch (e) {
+                                        console.error(`Error in periodic cleanup: ${e.message}`);
+                                    }
+                                }
+                            }
+                            
+                            // Then filter out inactive mooks that have no sprite left
                             const beforeCount = this.gameState.mooks.length;
                             this.gameState.mooks = this.gameState.mooks.filter(mook => 
-                                mook.active || (mook.markedForRemoval && mook.sprite !== null)
+                                mook.active || mook.sprite !== null
                             );
                             const afterCount = this.gameState.mooks.length;
                             
-                            if (beforeCount !== afterCount) {
-                                console.log(`Mook cleanup: Removed ${beforeCount - afterCount} mooks, ${afterCount} remaining`);
+                            if (destroyedCount > 0 || beforeCount !== afterCount) {
+                                console.log(`Periodic cleanup: Removed ${beforeCount - afterCount} mooks, destroyed ${destroyedCount} sprites, ${afterCount} mooks remaining`);
                             }
                         },
                         loop: true
                     });
                 } else if (!this.gameState.waveActive && this.cleanupTimer !== undefined) {
+                    console.log('Removing periodic cleanup timer (wave not active)');
                     this.cleanupTimer.remove();
                     this.cleanupTimer = undefined;
                 }
