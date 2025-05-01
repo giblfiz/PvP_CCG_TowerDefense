@@ -1,3 +1,17 @@
 node_modules/
 coverage/
 .DS_Store
+
+# Logs directory (keep the directory, ignore files)
+logs/*
+!logs/.gitkeep
+
+# macOS
+.AppleDouble
+.LSOverride
+._*
+
+# Temp files
+.tmp/
+.temp/
+*.swp
