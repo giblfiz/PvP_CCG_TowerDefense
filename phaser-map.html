@@ -188,8 +188,42 @@
     
     <div id="error-display"></div>
 
+    <!-- Server Logger (optional) -->
+    <script src="src/ui/ServerLogger.js"></script>
+    
     <!-- Error handling script -->
     <script>
+        
+        // Initialize server logger if available (but disabled by default)
+        let logger;
+        try {
+            logger = new ServerLogger({
+                endpoint: '/api/log',
+                enabled: false, // Disabled by default
+                logToConsole: true,
+                batchInterval: 1000,
+                contextInfo: {
+                    gameVersion: '1.0.0',
+                    url: window.location.href
+                }
+            });
+            console.log('Server logger is available. Set window.enableServerLogging = true to enable.');
+            
+            // Add global functions to enable/disable server logging
+            window.enableServerLogging = function() {
+                logger.setEnabled(true);
+                console.log('Server logging enabled');
+                return 'Server logging enabled';
+            };
+            
+            window.disableServerLogging = function() {
+                logger.setEnabled(false);
+                console.log('Server logging disabled');
+                return 'Server logging disabled';
+            };
+        } catch (e) {
+            console.log('Server logger not available:', e.message);
+        }
         
         // Custom error handler to display errors in the page
         const errorDisplay = document.getElementById('error-display');
@@ -207,6 +241,11 @@
             // Display in our error div
             const errorMessage = Array.from(arguments).join(' ');
             displayError('ERROR: ' + errorMessage);
+            
+            // Send to server logger if enabled
+            if (logger && logger.options.enabled) {
+                logger.error(errorMessage);
+            }
         };
         
         // Override console.warn
@@ -217,12 +256,41 @@
             // Display in our error div
             const warnMessage = Array.from(arguments).join(' ');
             displayError('WARNING: ' + warnMessage);
+            
+            // Send to server logger if enabled
+            if (logger && logger.options.enabled) {
+                logger.warn(warnMessage);
+            }
+        };
+        
+        // Also intercept console.log for cleanup/mook related messages
+        console.log = function() {
+            // Call original method
+            originalConsoleLog.apply(console, arguments);
+            
+            // Send important logs to server logger if enabled
+            if (logger && logger.options.enabled) {
+                const logMessage = Array.from(arguments).join(' ');
+                if (logMessage.includes('cleanup') || 
+                    logMessage.includes('Mook') || 
+                    logMessage.includes('sprite') ||
+                    logMessage.includes('tower') ||
+                    logMessage.includes('wave') ||
+                    logMessage.includes('gold')) {
+                    logger.info(logMessage);
+                }
+            }
         };
         
         // Handle window errors
         window.addEventListener('error', function(e) {
             const errorMsg = 'EXCEPTION: ' + e.message + ' at ' + e.filename + ':' + e.lineno;
             displayError(errorMsg);
+            
+            // Send to server logger if enabled
+            if (logger && logger.options.enabled) {
+                logger.error(errorMsg, { stack: e.error ? e.error.stack : null });
+            }
             return false;
         });
         
@@ -230,6 +298,11 @@
         window.addEventListener('unhandledrejection', function(e) {
             const errorMsg = 'UNHANDLED PROMISE REJECTION: ' + e.reason;
             displayError(errorMsg);
+            
+            // Send to server logger if enabled
+            if (logger && logger.options.enabled) {
+                logger.error(errorMsg, { reason: e.reason });
+            }
         });
         
         function displayError(message) {
