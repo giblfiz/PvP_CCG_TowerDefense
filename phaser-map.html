@@ -1546,6 +1546,9 @@
                     // Set up cell clicks for tower placement
                     this.setupCellClicks();
                     
+                    // Initialize cleanup timer as undefined
+                    this.cleanupTimer = undefined;
+                    
                     // Add debug info
                     const infoPanel = document.getElementById('info-panel');
                     infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${this.currentZoom.toFixed(2)}x`;
@@ -1845,34 +1848,69 @@
             }
             
             updateMookSprites() {
-                // Update positions of all mook sprites
+                // Update positions of all mook sprites and clean up dead mooks
                 for (const mook of this.gameState.mooks) {
                     if (mook.sprite) {
-                        // Update position
-                        mook.sprite.setPosition(
-                            mook.position.x * this.cellSize + this.cellSize/2,
-                            mook.position.y * this.cellSize + this.cellSize/2
-                        );
-                        
-                        // Update health bar
-                        if (mook.healthBar) {
-                            const healthPercent = mook.getHealthPercent();
-                            mook.healthBar.width = mook.barWidth * healthPercent;
-                            mook.healthBar.x = -mook.barWidth/2 + (mook.barWidth * healthPercent)/2;
-                            
-                            // Change color based on health
-                            if (healthPercent < 0.3) {
-                                mook.healthBar.fillColor = 0xff3300;
-                            } else if (healthPercent < 0.6) {
-                                mook.healthBar.fillColor = 0xffff00;
-                            } else {
-                                mook.healthBar.fillColor = 0x00ff00;
+                        if (!mook.active) {
+                            // If mook is inactive (dead or reached end), destroy its sprite after effects complete
+                            if (!mook.markedForRemoval) {
+                                mook.markedForRemoval = true;
+                                
+                                // Delay removal to allow death effects to play
+                                this.time.delayedCall(1000, () => {
+                                    if (mook.sprite) {
+                                        mook.sprite.destroy();
+                                        mook.sprite = null;
+                                    }
+                                });
                             }
+                            
+                            // Hide immediately
+                            mook.sprite.visible = false;
+                        } else {
+                            // Update position for active mooks
+                            mook.sprite.setPosition(
+                                mook.position.x * this.cellSize + this.cellSize/2,
+                                mook.position.y * this.cellSize + this.cellSize/2
+                            );
+                            
+                            // Update health bar
+                            if (mook.healthBar) {
+                                const healthPercent = mook.getHealthPercent();
+                                mook.healthBar.width = mook.barWidth * healthPercent;
+                                mook.healthBar.x = -mook.barWidth/2 + (mook.barWidth * healthPercent)/2;
+                                
+                                // Change color based on health
+                                if (healthPercent < 0.3) {
+                                    mook.healthBar.fillColor = 0xff3300;
+                                } else if (healthPercent < 0.6) {
+                                    mook.healthBar.fillColor = 0xffff00;
+                                } else {
+                                    mook.healthBar.fillColor = 0x00ff00;
+                                }
+                            }
+                            
+                            // Ensure visible
+                            mook.sprite.visible = true;
                         }
-                        
-                        // Hide if inactive
-                        mook.sprite.visible = mook.active && !mook.reachedEnd;
                     }
+                }
+                
+                // Clean up the mooks array periodically to remove those fully processed
+                if (this.gameState.waveActive && this.cleanupTimer === undefined) {
+                    this.cleanupTimer = this.time.addEvent({
+                        delay: 2000,
+                        callback: () => {
+                            // Filter out inactive mooks that have had their sprites removed
+                            this.gameState.mooks = this.gameState.mooks.filter(
+                                mook => mook.active || !mook.markedForRemoval || mook.sprite
+                            );
+                        },
+                        loop: true
+                    });
+                } else if (!this.gameState.waveActive && this.cleanupTimer !== undefined) {
+                    this.cleanupTimer.remove();
+                    this.cleanupTimer = undefined;
                 }
             }
             
