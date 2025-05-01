@@ -316,7 +316,7 @@
     </script>
 
     <!-- Load Phaser library -->
-    <script src="vendors/phaser/phaser.min.js" onerror="displayError('Failed to load Phaser library. Check if the file exists at vendors/phaser/phaser.min.js')"></script>
+    <script src="vendors/phaser/phaser.js" onerror="displayError('Failed to load Phaser library. Check if the file exists at vendors/phaser/phaser.js')"></script>
     
     <!-- Game code -->
     <script>
@@ -1856,9 +1856,16 @@
                     for (const sprite of containerList) {
                         if (!activeMookSprites.has(sprite)) {
                             console.log(`Found orphaned sprite in container - removing it`);
-                            this.mookContainer.remove(sprite);
-                            sprite.destroy(true);
-                            destroyedCount++;
+                            try {
+                                // Make sure the sprite is still valid before removing
+                                if (sprite && !sprite.destroyed && sprite.parentContainer) {
+                                    this.mookContainer.remove(sprite);
+                                    sprite.destroy(true);
+                                    destroyedCount++;
+                                }
+                            } catch (e) {
+                                console.error(`Error cleaning up orphaned sprite: ${e.message}`);
+                            }
                         }
                     }
                     
@@ -1872,26 +1879,28 @@
                             // Only attempt to remove sprite if it exists
                             if (mook.sprite) {
                                 try {
-                                    // Check if sprite is still in container
-                                    const inContainer = this.mookContainer.list.includes(mook.sprite);
-                                    console.log(`Mook sprite in container? ${inContainer}`);
+                                    // Check if sprite is still valid and in container
+                                    const isValid = mook.sprite && !mook.sprite.destroyed;
+                                    const inContainer = isValid && this.mookContainer.list.includes(mook.sprite);
+                                    console.log(`Mook sprite valid? ${isValid}, in container? ${inContainer}`);
                                     
                                     // Remove from container first (this is critical)
-                                    if (inContainer) {
+                                    if (isValid && inContainer && mook.sprite.parentContainer) {
                                         this.mookContainer.remove(mook.sprite);
                                     }
                                     
-                                    // Then properly destroy the sprite and its children
-                                    mook.sprite.destroy(true);
+                                    // Then properly destroy the sprite and its children (if sprite is still valid)
+                                    if (isValid) {
+                                        mook.sprite.destroy(true);
+                                        destroyedCount++;
+                                    }
                                     
-                                    // Clear references to allow garbage collection
+                                    // Clear references to allow garbage collection - ALWAYS do this
                                     mook.sprite = null;
                                     mook.healthBar = null;
                                     
                                     // Mark as fully processed
                                     mook.markedForRemoval = true;
-                                    
-                                    destroyedCount++;
                                 } catch (e) {
                                     console.error(`Error destroying mook sprite: ${e.message}`);
                                     // Still try to clear references
@@ -1927,9 +1936,22 @@
                         for (const sprite of remainingList) {
                             if (!validSprites.has(sprite)) {
                                 console.log("Removing extra sprite from container");
-                                this.mookContainer.remove(sprite);
-                                sprite.destroy(true);
-                                destroyedCount++;
+                                try {
+                                    // Make sure the sprite is still valid before removing
+                                    if (sprite && !sprite.destroyed && sprite.parentContainer) {
+                                        this.mookContainer.remove(sprite);
+                                        sprite.destroy(true);
+                                        destroyedCount++;
+                                    }
+                                } catch (e) {
+                                    console.error(`Error removing extra sprite: ${e.message}`);
+                                    // If error occurs, try just nullifying it in the list
+                                    const index = this.mookContainer.list.indexOf(sprite);
+                                    if (index >= 0) {
+                                        console.log("Nullifying problematic sprite in container list");
+                                        this.mookContainer.list[index] = null;
+                                    }
+                                }
                             }
                         }
                     }
