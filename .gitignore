@@ -14,4 +14,4 @@ logs/*
 # Temp files
 .tmp/
 .temp/
-*.swp
+*.swpvendors/phaser/phaser.js
