@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tower Defense Map Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2d2d2d;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #info-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 14px;
+        }
+        
+        #help-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        #error-display {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 1000;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            #info-panel, #help-panel {
+                font-size: 12px;
+                padding: 5px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="info-panel">Tower Defense Map Demo</div>
+    <div id="help-panel">
+        📌 Drag to pan<br>
+        🔍 Pinch/scroll to zoom
+    </div>
+    <div id="game-container"></div>
+    <div id="error-display"></div>
+
+    <!-- Error handling script -->
+    <script>
+        // Custom error handler to display errors in the page
+        const errorDisplay = document.getElementById('error-display');
+        
+        // Store original console methods
+        const originalConsoleError = console.error;
+        const originalConsoleLog = console.log;
+        const originalConsoleWarn = console.warn;
+        
+        // Override console.error
+        console.error = function() {
+            // Call original method
+            originalConsoleError.apply(console, arguments);
+            
+            // Display in our error div
+            const errorMessage = Array.from(arguments).join(' ');
+            displayError('ERROR: ' + errorMessage);
+        };
+        
+        // Override console.warn
+        console.warn = function() {
+            // Call original method
+            originalConsoleWarn.apply(console, arguments);
+            
+            // Display in our error div
+            const warnMessage = Array.from(arguments).join(' ');
+            displayError('WARNING: ' + warnMessage);
+        };
+        
+        // Handle window errors
+        window.addEventListener('error', function(e) {
+            displayError('EXCEPTION: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+            return false;
+        });
+        
+        // Handle promise rejections
+        window.addEventListener('unhandledrejection', function(e) {
+            displayError('UNHANDLED PROMISE REJECTION: ' + e.reason);
+        });
+        
+        function displayError(message) {
+            errorDisplay.style.display = 'block';
+            const errorLine = document.createElement('div');
+            errorLine.textContent = message;
+            errorDisplay.appendChild(errorLine);
+            
+            // Scroll to bottom
+            errorDisplay.scrollTop = errorDisplay.scrollHeight;
+        }
+    </script>
+
+    <!-- Load Phaser library -->
+    <script src="vendors/phaser/phaser.min.js" onerror="displayError('Failed to load Phaser library. Check if the file exists at vendors/phaser/phaser.min.js')"></script>
+    
+    <!-- Game code -->
+    <script>
+        // Check if Phaser exists before continuing
+        if (typeof Phaser === 'undefined') {
+            displayError('Phaser is not defined! The Phaser library failed to load correctly.');
+        } else {
+            console.log('Phaser loaded successfully:', Phaser.VERSION);
+        }
+    
+        /**
+         * Map definition
+         */
+        class TDMap {
+            static CELL_EMPTY = 0;
+            static CELL_PATH = 1;
+            static CELL_SPAWN = 2;
+            static CELL_EXIT = 3;
+            
+            constructor(width = 20, height = 15) {
+                this.width = width;
+                this.height = height;
+                
+                // Initialize grid
+                this.grid = [];
+                for (let x = 0; x < this.width; x++) {
+                    this.grid[x] = [];
+                    for (let y = 0; y < this.height; y++) {
+                        this.grid[x][y] = TDMap.CELL_EMPTY;
+                    }
+                }
+                
+                // Initialize paths, spawn points, and exit points
+                this.paths = [];
+                this.spawnPoints = [];
+                this.exitPoints = [];
+                
+                // Generate a default map
+                this.generateMap();
+            }
+            
+            generateMap() {
+                // Clear existing data
+                this.paths = [];
+                this.spawnPoints = [];
+                this.exitPoints = [];
+                
+                // Reset grid to empty
+                for (let x = 0; x < this.width; x++) {
+                    for (let y = 0; y < this.height; y++) {
+                        this.grid[x][y] = TDMap.CELL_EMPTY;
+                    }
+                }
+                
+                // Create a spawn point on the left edge
+                const spawnY = Math.floor(Math.random() * this.height);
+                const spawnPoint = { x: 0, y: spawnY };
+                this.addSpawnPoint(spawnPoint.x, spawnPoint.y);
+                
+                // Create an exit point on the right edge
+                const exitY = Math.floor(Math.random() * this.height);
+                const exitPoint = { x: this.width - 1, y: exitY };
+                this.addExitPoint(exitPoint.x, exitPoint.y);
+                
+                // Generate path from spawn to exit
+                const path = this.findPath(spawnPoint, exitPoint);
+                this.addPath(path);
+            }
+            
+            findPath(start, end) {
+                const path = [];
+                let current = { ...start };
+                path.push({ ...current });
+                
+                // Simple path algorithm - go horizontal first, then vertical
+                while (current.x !== end.x || current.y !== end.y) {
+                    // Move horizontally first
+                    if (current.x < end.x) {
+                        current.x += 1;
+                    } else if (current.x > end.x) {
+                        current.x -= 1;
+                    }
+                    // Then move vertically
+                    else if (current.y < end.y) {
+                        current.y += 1;
+                    } else if (current.y > end.y) {
+                        current.y -= 1;
+                    }
+                    
+                    path.push({ ...current });
+                }
+                
+                return path;
+            }
+            
+            addSpawnPoint(x, y) {
+                if (!this.isValidPosition(x, y)) {
+                    return false;
+                }
+                
+                this.spawnPoints.push({ x, y });
+                this.grid[x][y] = TDMap.CELL_SPAWN;
+                return true;
+            }
+            
+            addExitPoint(x, y) {
+                if (!this.isValidPosition(x, y)) {
+                    return false;
+                }
+                
+                this.exitPoints.push({ x, y });
+                this.grid[x][y] = TDMap.CELL_EXIT;
+                return true;
+            }
+            
+            addPath(path) {
+                // Verify path
+                if (!Array.isArray(path) || path.length < 2) {
+                    return false;
+                }
+                
+                // Add path to map
+                this.paths.push([...path]);
+                
+                // Mark all path cells in grid
+                for (let i = 0; i < path.length; i++) {
+                    const { x, y } = path[i];
+                    if (this.isValidPosition(x, y)) {
+                        // Skip overwriting spawn and exit points
+                        if (this.grid[x][y] !== TDMap.CELL_SPAWN && this.grid[x][y] !== TDMap.CELL_EXIT) {
+                            this.grid[x][y] = TDMap.CELL_PATH;
+                        }
+                    }
+                }
+                
+                return true;
+            }
+            
+            isValidPosition(x, y) {
+                return x >= 0 && x < this.width && y >= 0 && y < this.height;
+            }
+            
+            getCellValue(x, y) {
+                if (!this.isValidPosition(x, y)) {
+                    return -1;
+                }
+                
+                return this.grid[x][y];
+            }
+        }
+    
+        class MapScene extends Phaser.Scene {
+            constructor() {
+                super('MapScene');
+                
+                // Camera and interaction state
+                this.isDragging = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.pinchDistance = 0;
+                this.currentZoom = 1;
+                
+                // Cell size in pixels
+                this.cellSize = 60;
+            }
+            
+            preload() {
+                // Create textures for map cells
+                this.createCellTextures();
+            }
+            
+            createCellTextures() {
+                // Empty cell texture
+                this.createEmptyCellTexture('empty-cell');
+                
+                // Path cell texture
+                this.createPathCellTexture('path-cell');
+                
+                // Spawn cell texture
+                this.createSpawnCellTexture('spawn-cell');
+                
+                // Exit cell texture
+                this.createExitCellTexture('exit-cell');
+            }
+            
+            createEmptyCellTexture(key) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(0x333333);
+                graphics.fillRect(0, 0, 100, 100);
+                graphics.lineStyle(2, 0x555555);
+                graphics.strokeRect(1, 1, 98, 98);
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createPathCellTexture(key) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(0x885500);
+                graphics.fillRect(0, 0, 100, 100);
+                graphics.lineStyle(2, 0xaa7722);
+                graphics.strokeRect(1, 1, 98, 98);
+                
+                // Add path markings
+                graphics.lineStyle(3, 0xffcc88);
+                graphics.beginPath();
+                graphics.moveTo(20, 50);
+                graphics.lineTo(80, 50);
+                graphics.strokePath();
+                
+                // Arrow
+                graphics.lineTo(70, 40);
+                graphics.moveTo(80, 50);
+                graphics.lineTo(70, 60);
+                graphics.strokePath();
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createSpawnCellTexture(key) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(0x00aa00);
+                graphics.fillRect(0, 0, 100, 100);
+                graphics.lineStyle(2, 0x00cc00);
+                graphics.strokeRect(1, 1, 98, 98);
+                
+                // Add spawn symbol
+                graphics.fillStyle(0xffffff);
+                graphics.fillCircle(50, 50, 30);
+                graphics.fillStyle(0x00aa00);
+                graphics.fillCircle(50, 50, 25);
+                graphics.fillStyle(0xffffff);
+                
+                // Add arrow
+                graphics.lineStyle(6, 0xffffff);
+                graphics.beginPath();
+                graphics.moveTo(35, 50);
+                graphics.lineTo(75, 50);
+                graphics.strokePath();
+                graphics.beginPath();
+                graphics.moveTo(65, 40);
+                graphics.lineTo(75, 50);
+                graphics.lineTo(65, 60);
+                graphics.strokePath();
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createExitCellTexture(key) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(0xaa0000);
+                graphics.fillRect(0, 0, 100, 100);
+                graphics.lineStyle(2, 0xcc0000);
+                graphics.strokeRect(1, 1, 98, 98);
+                
+                // Add exit symbol
+                graphics.fillStyle(0xffffff);
+                graphics.fillCircle(50, 50, 30);
+                graphics.fillStyle(0xaa0000);
+                graphics.fillCircle(50, 50, 25);
+                
+                // Add X
+                graphics.lineStyle(6, 0xffffff);
+                graphics.beginPath();
+                graphics.moveTo(35, 35);
+                graphics.lineTo(65, 65);
+                graphics.moveTo(65, 35);
+                graphics.lineTo(35, 65);
+                graphics.strokePath();
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            create() {
+                try {
+                    // Create the map
+                    this.tdMap = new TDMap(20, 15);
+                    
+                    // Set up world boundaries
+                    const worldWidth = this.tdMap.width * this.cellSize;
+                    const worldHeight = this.tdMap.height * this.cellSize;
+                    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+                    
+                    // Render the map
+                    this.renderMap();
+                    
+                    // Set up camera controls
+                    this.setupCameraControls();
+                    
+                    // Add debug info
+                    const infoPanel = document.getElementById('info-panel');
+                    infoPanel.textContent = `Tower Defense Map (${this.tdMap.width}x${this.tdMap.height}) - Zoom: ${this.currentZoom.toFixed(2)}x`;
+                    
+                } catch (error) {
+                    console.error("Error in create method:", error);
+                    displayError("Create method failed: " + error.message);
+                }
+            }
+            
+            renderMap() {
+                // Container for all map cells
+                this.mapContainer = this.add.container(0, 0);
+                
+                // Render grid
+                for (let x = 0; x < this.tdMap.width; x++) {
+                    for (let y = 0; y < this.tdMap.height; y++) {
+                        const cellValue = this.tdMap.getCellValue(x, y);
+                        let cellSprite;
+                        
+                        // Choose texture based on cell type
+                        switch (cellValue) {
+                            case TDMap.CELL_PATH:
+                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'path-cell');
+                                break;
+                            case TDMap.CELL_SPAWN:
+                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'spawn-cell');
+                                break;
+                            case TDMap.CELL_EXIT:
+                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'exit-cell');
+                                break;
+                            default:
+                                cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'empty-cell');
+                        }
+                        
+                        cellSprite.setScale(this.cellSize/100); // Scale to cell size
+                        this.mapContainer.add(cellSprite);
+                        
+                        // Add grid coordinates for reference
+                        if (x % 5 === 0 && y % 5 === 0) {
+                            const coordText = this.add.text(
+                                x * this.cellSize + this.cellSize/2, 
+                                y * this.cellSize + this.cellSize/2, 
+                                `(${x},${y})`, 
+                                {
+                                    fontSize: '10px',
+                                    color: '#ffffff',
+                                    stroke: '#000000',
+                                    strokeThickness: 2
+                                }
+                            );
+                            coordText.setOrigin(0.5);
+                            this.mapContainer.add(coordText);
+                        }
+                    }
+                }
+                
+                // Render path(s) with arrows
+                this.renderPaths();
+            }
+            
+            renderPaths() {
+                // Draw path overlay with directional indicators
+                if (this.tdMap.paths.length > 0) {
+                    const path = this.tdMap.paths[0]; // Just render the first path for now
+                    
+                    // Create graphics for path overlay
+                    const pathGraphics = this.add.graphics();
+                    pathGraphics.lineStyle(3, 0xffff00, 0.5);
+                    
+                    // Draw path line
+                    pathGraphics.beginPath();
+                    pathGraphics.moveTo(
+                        path[0].x * this.cellSize + this.cellSize/2,
+                        path[0].y * this.cellSize + this.cellSize/2
+                    );
+                    
+                    for (let i = 1; i < path.length; i++) {
+                        pathGraphics.lineTo(
+                            path[i].x * this.cellSize + this.cellSize/2,
+                            path[i].y * this.cellSize + this.cellSize/2
+                        );
+                    }
+                    
+                    pathGraphics.strokePath();
+                    
+                    // Add directional arrows at intervals
+                    for (let i = 1; i < path.length; i += 2) {
+                        const prev = path[i-1];
+                        const curr = path[i];
+                        
+                        // Calculate direction
+                        const angle = Phaser.Math.Angle.Between(
+                            prev.x * this.cellSize + this.cellSize/2,
+                            prev.y * this.cellSize + this.cellSize/2,
+                            curr.x * this.cellSize + this.cellSize/2,
+                            curr.y * this.cellSize + this.cellSize/2
+                        );
+                        
+                        // Create arrow sprite
+                        const arrow = this.add.text(
+                            curr.x * this.cellSize + this.cellSize/2,
+                            curr.y * this.cellSize + this.cellSize/2,
+                            '➡️',
+                            { fontSize: '20px' }
+                        );
+                        arrow.setOrigin(0.5);
+                        arrow.setRotation(angle);
+                        
+                        this.mapContainer.add(arrow);
+                    }
+                }
+            }
+            
+            setupCameraControls() {
+                // Enable camera controls
+                const cam = this.cameras.main;
+                
+                // Set initial position to center of the map
+                const worldWidth = this.tdMap.width * this.cellSize;
+                const worldHeight = this.tdMap.height * this.cellSize;
+                cam.centerOn(worldWidth/2, worldHeight/2);
+                
+                // Drag to pan
+                this.input.on('pointerdown', (pointer) => {
+                    this.isDragging = true;
+                    this.dragStartX = pointer.x;
+                    this.dragStartY = pointer.y;
+                });
+                
+                this.input.on('pointermove', (pointer) => {
+                    if (this.isDragging) {
+                        const dx = (pointer.x - this.dragStartX) / cam.zoom;
+                        const dy = (pointer.y - this.dragStartY) / cam.zoom;
+                        
+                        cam.scrollX -= dx;
+                        cam.scrollY -= dy;
+                        
+                        this.dragStartX = pointer.x;
+                        this.dragStartY = pointer.y;
+                    }
+                });
+                
+                this.input.on('pointerup', () => {
+                    this.isDragging = false;
+                });
+                
+                // Zoom with mouse wheel
+                this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+                    const zoomFactor = 0.1;
+                    const newZoom = deltaY > 0 ? 
+                        Math.max(0.5, cam.zoom - zoomFactor) : 
+                        Math.min(2, cam.zoom + zoomFactor);
+                    
+                    this.zoomCamera(newZoom, pointer.worldX, pointer.worldY);
+                });
+                
+                // Touch controls for mobile
+                this.input.addPointer(1); // Ensure we track 2 pointers for pinch
+                
+                this.input.on('pointermove', (pointer) => {
+                    if (this.input.pointer1.isDown && this.input.pointer2.isDown) {
+                        // This is a pinch
+                        const currentDistance = Phaser.Math.Distance.Between(
+                            this.input.pointer1.x, this.input.pointer1.y,
+                            this.input.pointer2.x, this.input.pointer2.y
+                        );
+                        
+                        if (this.pinchDistance > 0) {
+                            const distanceDiff = currentDistance - this.pinchDistance;
+                            const zoomFactor = 0.01;
+                            
+                            // Calculate center of pinch for zoom focus
+                            const pinchCenterX = (this.input.pointer1.worldX + this.input.pointer2.worldX) / 2;
+                            const pinchCenterY = (this.input.pointer1.worldY + this.input.pointer2.worldY) / 2;
+                            
+                            const newZoom = distanceDiff > 0 ? 
+                                Math.min(2, cam.zoom + (zoomFactor * distanceDiff)) : 
+                                Math.max(0.5, cam.zoom + (zoomFactor * distanceDiff));
+                            
+                            this.zoomCamera(newZoom, pinchCenterX, pinchCenterY);
+                        }
+                        
+                        this.pinchDistance = currentDistance;
+                        this.isDragging = false; // Disable drag during pinch
+                    }
+                });
+                
+                this.input.on('pointerup', () => {
+                    if (!this.input.pointer1.isDown || !this.input.pointer2.isDown) {
+                        this.pinchDistance = 0;
+                    }
+                });
+                
+                // Add key controls for zoom
+                this.zoomInKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.PLUS);
+                this.zoomOutKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.MINUS);
+                
+                // Add key controls for panning
+                this.cursors = this.input.keyboard.createCursorKeys();
+            }
+            
+            zoomCamera(newZoom, focusX, focusY) {
+                // Store the pre-zoom camera position and focus point
+                const cam = this.cameras.main;
+                const oldZoom = cam.zoom;
+                
+                // Set the new zoom level
+                cam.zoom = newZoom;
+                this.currentZoom = newZoom;
+                
+                // Update camera position to maintain focus point
+                if (focusX !== undefined && focusY !== undefined) {
+                    const zoomFactor = newZoom / oldZoom;
+                    
+                    // Calculate how much the camera should move to maintain focus
+                    const offsetX = (focusX - cam.worldView.centerX) * (1 - 1 / zoomFactor);
+                    const offsetY = (focusY - cam.worldView.centerY) * (1 - 1 / zoomFactor);
+                    
+                    cam.scrollX += offsetX;
+                    cam.scrollY += offsetY;
+                }
+                
+                // Update text display to show current zoom level
+                const infoPanel = document.getElementById('info-panel');
+                infoPanel.textContent = `Tower Defense Map (${this.tdMap.width}x${this.tdMap.height}) - Zoom: ${newZoom.toFixed(2)}x`;
+            }
+            
+            update() {
+                // Keyboard controls for camera
+                if (this.cursors) {
+                    const speed = 10 / this.cameras.main.zoom;
+                    
+                    if (this.cursors.left.isDown) {
+                        this.cameras.main.scrollX -= speed;
+                    } else if (this.cursors.right.isDown) {
+                        this.cameras.main.scrollX += speed;
+                    }
+                    
+                    if (this.cursors.up.isDown) {
+                        this.cameras.main.scrollY -= speed;
+                    } else if (this.cursors.down.isDown) {
+                        this.cameras.main.scrollY += speed;
+                    }
+                }
+                
+                // Keyboard zoom controls
+                if (this.zoomInKey && this.zoomInKey.isDown) {
+                    const newZoom = Math.min(2, this.cameras.main.zoom + 0.01);
+                    this.zoomCamera(newZoom);
+                } else if (this.zoomOutKey && this.zoomOutKey.isDown) {
+                    const newZoom = Math.max(0.5, this.cameras.main.zoom - 0.01);
+                    this.zoomCamera(newZoom);
+                }
+            }
+        }
+        
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game-container',
+            backgroundColor: '#222222',
+            scene: [MapScene],
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                autoCenter: Phaser.Scale.CENTER_BOTH
+            }
+        };
+        
+        try {
+            const game = new Phaser.Game(config);
+            
+            // Add game to window for debugging
+            window.game = game;
+            
+            console.log("Game created successfully");
+            
+            // Handle window resize events
+            window.addEventListener('resize', function() {
+                game.scale.resize(window.innerWidth, window.innerHeight);
+            });
+            
+        } catch (error) {
+            console.error("Failed to create game:", error);
+            displayError("Game initialization failed: " + error.message);
+        }
+    </script>
+</body>
+</html>
