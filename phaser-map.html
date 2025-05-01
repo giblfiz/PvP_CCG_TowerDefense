@@ -43,9 +43,67 @@
             text-align: right;
         }
         
-        #error-display {
+        #hud-panel {
             position: fixed;
             bottom: 10px;
+            left: 10px;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 16px;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        
+        #tower-selection {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            border-radius: 4px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tower-button {
+            width: 60px;
+            height: 60px;
+            background-color: #555;
+            border: 2px solid #888;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            font-size: 24px;
+            transition: all 0.2s ease;
+        }
+        
+        .tower-button:hover {
+            border-color: #aaa;
+            background-color: #666;
+        }
+        
+        .tower-button.selected {
+            border-color: #ffcc00;
+            background-color: #775500;
+        }
+        
+        .tower-cost {
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        
+        #error-display {
+            position: fixed;
+            bottom: 80px;
             left: 10px;
             right: 10px;
             max-height: 150px;
@@ -58,11 +116,29 @@
             z-index: 1000;
             display: none;
         }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            min-width: 80px;
+            text-align: right;
+        }
 
         @media (max-width: 768px) {
             #info-panel, #help-panel {
                 font-size: 12px;
                 padding: 5px 8px;
+            }
+            
+            .tower-button {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
             }
         }
     </style>
@@ -71,9 +147,44 @@
     <div id="info-panel">Tower Defense Map Demo</div>
     <div id="help-panel">
         📌 Drag to pan<br>
-        🔍 Pinch/scroll to zoom
+        🔍 Pinch/scroll to zoom<br>
+        🏗️ Click to place towers
     </div>
     <div id="game-container"></div>
+    
+    <div id="hud-panel">
+        <div class="stat">
+            <span class="stat-label">Gold:</span>
+            <span class="stat-value" id="gold-value">100</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Lives:</span>
+            <span class="stat-value" id="lives-value">20</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Wave:</span>
+            <span class="stat-value" id="wave-value">0</span>
+        </div>
+        <div class="stat">
+            <button id="wave-button" style="width: 100%; padding: 5px; margin-top: 5px; cursor: pointer;">Start Wave</button>
+        </div>
+    </div>
+    
+    <div id="tower-selection">
+        <div class="tower-button" data-type="basic" data-cost="50">
+            🗼
+            <div class="tower-cost">50</div>
+        </div>
+        <div class="tower-button" data-type="sniper" data-cost="100">
+            🏯
+            <div class="tower-cost">100</div>
+        </div>
+        <div class="tower-button" data-type="splash" data-cost="150">
+            🏰
+            <div class="tower-cost">150</div>
+        </div>
+    </div>
+    
     <div id="error-display"></div>
 
     <!-- Error handling script -->
@@ -141,6 +252,76 @@
         }
     
         /**
+         * Tower class definition
+         */
+        class Tower {
+            static TOWER_BASIC = 'basic';
+            static TOWER_SNIPER = 'sniper';
+            static TOWER_SPLASH = 'splash';
+            
+            constructor(type, gridX, gridY) {
+                this.type = type;
+                this.gridX = gridX;
+                this.gridY = gridY;
+                this.level = 1;
+                
+                // Set stats based on tower type
+                switch(type) {
+                    case Tower.TOWER_BASIC:
+                        this.damage = 20;
+                        this.range = 3;
+                        this.fireRate = 1;
+                        this.cost = 50;
+                        this.upgradeCost = 40;
+                        this.emoji = '🗼';
+                        break;
+                    case Tower.TOWER_SNIPER:
+                        this.damage = 50;
+                        this.range = 6;
+                        this.fireRate = 0.5;
+                        this.cost = 100;
+                        this.upgradeCost = 80;
+                        this.emoji = '🏯';
+                        break;
+                    case Tower.TOWER_SPLASH:
+                        this.damage = 15;
+                        this.range = 2;
+                        this.fireRate = 0.8;
+                        this.cost = 150;
+                        this.upgradeCost = 120;
+                        this.emoji = '🏰';
+                        break;
+                    default:
+                        this.damage = 10;
+                        this.range = 2;
+                        this.fireRate = 1;
+                        this.cost = 50;
+                        this.upgradeCost = 40;
+                        this.emoji = '🗼';
+                }
+                
+                this.lastFired = 0;
+            }
+            
+            upgrade() {
+                this.level++;
+                this.damage *= 1.5;
+                this.range += 0.5;
+                this.fireRate *= 1.2;
+                this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
+            }
+            
+            canFire(time) {
+                return time - this.lastFired >= 1000 / this.fireRate;
+            }
+            
+            fire(time) {
+                this.lastFired = time;
+                return this.damage;
+            }
+        }
+    
+        /**
          * Map definition
          */
         class TDMap {
@@ -148,6 +329,7 @@
             static CELL_PATH = 1;
             static CELL_SPAWN = 2;
             static CELL_EXIT = 3;
+            static CELL_TOWER = 4;
             
             constructor(width = 20, height = 15) {
                 this.width = width;
@@ -279,6 +461,135 @@
                 
                 return this.grid[x][y];
             }
+            
+            canPlaceTower(x, y) {
+                if (!this.isValidPosition(x, y)) {
+                    return false;
+                }
+                
+                // Can only place towers on empty cells
+                return this.grid[x][y] === TDMap.CELL_EMPTY;
+            }
+            
+            placeTower(x, y) {
+                if (!this.canPlaceTower(x, y)) {
+                    return false;
+                }
+                
+                this.grid[x][y] = TDMap.CELL_TOWER;
+                return true;
+            }
+            
+            removeTower(x, y) {
+                if (!this.isValidPosition(x, y)) {
+                    return false;
+                }
+                
+                if (this.grid[x][y] === TDMap.CELL_TOWER) {
+                    this.grid[x][y] = TDMap.CELL_EMPTY;
+                    return true;
+                }
+                
+                return false;
+            }
+        }
+        
+        /**
+         * Game state
+         */
+        class GameState {
+            constructor() {
+                this.gold = 100;
+                this.lives = 20;
+                this.wave = 0;
+                this.towers = [];
+                this.waveActive = false;
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            addGold(amount) {
+                this.gold += amount;
+                this.updateUI();
+            }
+            
+            spendGold(amount) {
+                if (this.gold >= amount) {
+                    this.gold -= amount;
+                    this.updateUI();
+                    return true;
+                }
+                return false;
+            }
+            
+            reduceLives(amount) {
+                this.lives -= amount;
+                this.updateUI();
+                
+                if (this.lives <= 0) {
+                    this.gameOver = true;
+                }
+            }
+            
+            startWave() {
+                if (!this.waveActive) {
+                    this.wave++;
+                    this.waveActive = true;
+                    this.updateUI();
+                    
+                    // Add bonus gold for starting a wave
+                    this.addGold(25);
+                    
+                    return true;
+                }
+                return false;
+            }
+            
+            endWave() {
+                this.waveActive = false;
+                
+                // Add wave completion bonus
+                this.addGold(50 + (this.wave * 10));
+                
+                this.updateUI();
+                document.getElementById('wave-button').textContent = 'Start Wave';
+            }
+            
+            updateUI() {
+                document.getElementById('gold-value').textContent = this.gold;
+                document.getElementById('lives-value').textContent = this.lives;
+                document.getElementById('wave-value').textContent = this.wave;
+                
+                if (this.waveActive) {
+                    document.getElementById('wave-button').textContent = 'Wave in Progress';
+                    document.getElementById('wave-button').disabled = true;
+                } else {
+                    document.getElementById('wave-button').textContent = 'Start Wave';
+                    document.getElementById('wave-button').disabled = false;
+                }
+            }
+            
+            addTower(tower) {
+                this.towers.push(tower);
+            }
+            
+            removeTower(gridX, gridY) {
+                const index = this.towers.findIndex(t => t.gridX === gridX && t.gridY === gridY);
+                if (index !== -1) {
+                    const tower = this.towers[index];
+                    this.towers.splice(index, 1);
+                    
+                    // Refund some of the cost
+                    this.addGold(Math.floor(tower.cost * 0.7));
+                    return true;
+                }
+                return false;
+            }
+            
+            getTower(gridX, gridY) {
+                return this.towers.find(t => t.gridX === gridX && t.gridY === gridY);
+            }
         }
     
         class MapScene extends Phaser.Scene {
@@ -294,11 +605,29 @@
                 
                 // Cell size in pixels
                 this.cellSize = 60;
+                
+                // Tower placement
+                this.selectedTowerType = null;
+                this.placementPreview = null;
+                
+                // Game state
+                this.gameState = new GameState();
             }
             
             preload() {
-                // Create textures for map cells
+                // Create textures for map cells and towers
+                this.createTextures();
+            }
+            
+            createTextures() {
+                // Create map cell textures
                 this.createCellTextures();
+                
+                // Create tower textures
+                this.createTowerTextures();
+                
+                // Create range indicator texture
+                this.createRangeTexture();
             }
             
             createCellTextures() {
@@ -313,6 +642,20 @@
                 
                 // Exit cell texture
                 this.createExitCellTexture('exit-cell');
+                
+                // Tower cell texture (base)
+                this.createTowerCellTexture('tower-cell');
+            }
+            
+            createTowerTextures() {
+                // Basic tower texture
+                this.createBasicTowerTexture('basic-tower');
+                
+                // Sniper tower texture
+                this.createSniperTowerTexture('sniper-tower');
+                
+                // Splash tower texture
+                this.createSplashTowerTexture('splash-tower');
             }
             
             createEmptyCellTexture(key) {
@@ -405,6 +748,125 @@
                 graphics.clear();
             }
             
+            createTowerCellTexture(key) {
+                const graphics = this.make.graphics();
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(0, 0, 100, 100);
+                graphics.lineStyle(2, 0x777777);
+                graphics.strokeRect(1, 1, 98, 98);
+                
+                // Add base platform
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(10, 10, 80, 80);
+                graphics.lineStyle(2, 0x888888);
+                graphics.strokeRect(10, 10, 80, 80);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createBasicTowerTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Base
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(0, 0, 100, 100);
+                
+                // Tower
+                graphics.fillStyle(0x3399ff);
+                graphics.fillRect(30, 20, 40, 60);
+                
+                // Top
+                graphics.fillStyle(0x55aaff);
+                graphics.fillRect(20, 10, 60, 20);
+                
+                // Border
+                graphics.lineStyle(3, 0x333333);
+                graphics.strokeRect(30, 20, 40, 60);
+                graphics.strokeRect(20, 10, 60, 20);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createSniperTowerTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Base
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(0, 0, 100, 100);
+                
+                // Tower
+                graphics.fillStyle(0xff9900);
+                graphics.fillRect(35, 15, 30, 70);
+                
+                // Top
+                graphics.fillStyle(0xffaa00);
+                graphics.fillRect(25, 5, 50, 20);
+                
+                // Border
+                graphics.lineStyle(3, 0x333333);
+                graphics.strokeRect(35, 15, 30, 70);
+                graphics.strokeRect(25, 5, 50, 20);
+                
+                // Sniper scope
+                graphics.fillStyle(0x333333);
+                graphics.fillCircle(50, 35, 10);
+                graphics.fillStyle(0xbbbbbb);
+                graphics.fillCircle(50, 35, 6);
+                graphics.fillStyle(0x000000);
+                graphics.fillCircle(50, 35, 3);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createSplashTowerTexture(key) {
+                const graphics = this.make.graphics();
+                
+                // Base
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(0, 0, 100, 100);
+                
+                // Tower body
+                graphics.fillStyle(0xff3366);
+                graphics.fillRect(30, 30, 40, 40);
+                
+                // Tower sides
+                graphics.fillStyle(0xcc3355);
+                graphics.fillRect(20, 40, 10, 20);
+                graphics.fillRect(70, 40, 10, 20);
+                
+                // Top
+                graphics.fillStyle(0xff5577);
+                graphics.fillRect(25, 20, 50, 20);
+                
+                // Border
+                graphics.lineStyle(3, 0x333333);
+                graphics.strokeRect(30, 30, 40, 40);
+                graphics.strokeRect(20, 40, 10, 20);
+                graphics.strokeRect(70, 40, 10, 20);
+                graphics.strokeRect(25, 20, 50, 20);
+                
+                graphics.generateTexture(key, 100, 100);
+                graphics.clear();
+            }
+            
+            createRangeTexture() {
+                const graphics = this.make.graphics();
+                
+                // Semi-transparent circle
+                graphics.fillStyle(0xffffff, 0.2);
+                graphics.fillCircle(0, 0, 100);
+                
+                // Border
+                graphics.lineStyle(2, 0xffffff, 0.5);
+                graphics.strokeCircle(0, 0, 100);
+                
+                graphics.generateTexture('range-indicator', 200, 200);
+                graphics.clear();
+            }
+            
             create() {
                 try {
                     // Create the map
@@ -421,9 +883,18 @@
                     // Set up camera controls
                     this.setupCameraControls();
                     
+                    // Set up tower placement
+                    this.setupTowerPlacement();
+                    
+                    // Set up wave controls
+                    this.setupWaveControls();
+                    
+                    // Set up cell clicks for tower placement
+                    this.setupCellClicks();
+                    
                     // Add debug info
                     const infoPanel = document.getElementById('info-panel');
-                    infoPanel.textContent = `Tower Defense Map (${this.tdMap.width}x${this.tdMap.height}) - Zoom: ${this.currentZoom.toFixed(2)}x`;
+                    infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${this.currentZoom.toFixed(2)}x`;
                     
                 } catch (error) {
                     console.error("Error in create method:", error);
@@ -435,8 +906,15 @@
                 // Container for all map cells
                 this.mapContainer = this.add.container(0, 0);
                 
+                // Container for all towers
+                this.towerContainer = this.add.container(0, 0);
+                
+                // Cells
+                this.cellSprites = [];
+                
                 // Render grid
                 for (let x = 0; x < this.tdMap.width; x++) {
+                    this.cellSprites[x] = [];
                     for (let y = 0; y < this.tdMap.height; y++) {
                         const cellValue = this.tdMap.getCellValue(x, y);
                         let cellSprite;
@@ -457,9 +935,14 @@
                         }
                         
                         cellSprite.setScale(this.cellSize/100); // Scale to cell size
+                        cellSprite.setInteractive();
+                        cellSprite.setData('gridX', x);
+                        cellSprite.setData('gridY', y);
+                        
+                        this.cellSprites[x][y] = cellSprite;
                         this.mapContainer.add(cellSprite);
                         
-                        // Add grid coordinates for reference
+                        // Add grid coordinates for reference (only on some cells to avoid clutter)
                         if (x % 5 === 0 && y % 5 === 0) {
                             const coordText = this.add.text(
                                 x * this.cellSize + this.cellSize/2, 
@@ -480,6 +963,19 @@
                 
                 // Render path(s) with arrows
                 this.renderPaths();
+                
+                // Add placement preview
+                this.placementPreview = this.add.container(0, 0);
+                this.placementPreview.setVisible(false);
+                
+                // Preview range indicator
+                this.rangeIndicator = this.add.image(0, 0, 'range-indicator');
+                this.rangeIndicator.setVisible(false);
+                
+                // Tower sprite for placement preview
+                this.towerPreview = this.add.image(0, 0, 'basic-tower');
+                this.towerPreview.setScale(this.cellSize/100 * 0.7);
+                this.towerPreview.setVisible(false);
             }
             
             renderPaths() {
@@ -535,6 +1031,257 @@
                 }
             }
             
+            setupTowerPlacement() {
+                // Set up tower selection buttons
+                const buttons = document.querySelectorAll('.tower-button');
+                
+                buttons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const towerType = button.getAttribute('data-type');
+                        const towerCost = parseInt(button.getAttribute('data-cost'));
+                        
+                        // Check if user has enough gold
+                        if (this.gameState.gold < towerCost) {
+                            displayError('Not enough gold to place this tower!');
+                            return;
+                        }
+                        
+                        // Select this tower type for placement
+                        this.selectTowerType(towerType);
+                        
+                        // Update UI
+                        buttons.forEach(b => b.classList.remove('selected'));
+                        button.classList.add('selected');
+                    });
+                });
+                
+                // Listen for escape key to cancel placement
+                this.input.keyboard.on('keydown-ESC', () => {
+                    this.cancelTowerPlacement();
+                    buttons.forEach(b => b.classList.remove('selected'));
+                });
+            }
+            
+            setupWaveControls() {
+                // Set up wave button
+                const waveButton = document.getElementById('wave-button');
+                
+                waveButton.addEventListener('click', () => {
+                    if (!this.gameState.waveActive) {
+                        this.gameState.startWave();
+                        // In a full implementation, we would spawn enemies here
+                        
+                        // For this demo, automatically end wave after 5 seconds
+                        this.time.delayedCall(5000, () => {
+                            this.gameState.endWave();
+                        });
+                    }
+                });
+            }
+            
+            setupCellClicks() {
+                // Add click handler for grid cells to place towers
+                this.input.on('gameobjectdown', (pointer, gameObject) => {
+                    // Only process if not dragging and we have a tower selected
+                    if (!this.isDragging && this.selectedTowerType) {
+                        const gridX = gameObject.getData('gridX');
+                        const gridY = gameObject.getData('gridY');
+                        
+                        // Attempt to place a tower
+                        this.placeTower(gridX, gridY);
+                    }
+                    // If right-click or holding shift, show tower info or remove
+                    else if (!this.isDragging && (pointer.rightButtonDown() || this.input.keyboard.checkDown(this.input.keyboard.addKey('SHIFT')))) {
+                        const gridX = gameObject.getData('gridX');
+                        const gridY = gameObject.getData('gridY');
+                        
+                        // Check if there's a tower here
+                        const tower = this.gameState.getTower(gridX, gridY);
+                        if (tower) {
+                            // If right-click, remove tower
+                            if (pointer.rightButtonDown()) {
+                                this.removeTower(gridX, gridY);
+                            }
+                            // Otherwise show tower info (not implemented yet)
+                        }
+                    }
+                });
+                
+                // Add hover handler for placement preview
+                this.input.on('gameobjectmove', (pointer, gameObject) => {
+                    if (this.selectedTowerType) {
+                        const gridX = gameObject.getData('gridX');
+                        const gridY = gameObject.getData('gridY');
+                        
+                        // Show placement preview
+                        this.showPlacementPreview(gridX, gridY);
+                    }
+                });
+                
+                // Add hover exit handler
+                this.input.on('gameobjectout', (pointer, gameObject) => {
+                    if (this.selectedTowerType) {
+                        // Hide placement preview when not hovering over a cell
+                        this.towerPreview.setVisible(false);
+                        this.rangeIndicator.setVisible(false);
+                    }
+                });
+            }
+            
+            selectTowerType(type) {
+                this.selectedTowerType = type;
+                
+                // Update tower preview texture
+                switch(type) {
+                    case 'basic':
+                        this.towerPreview.setTexture('basic-tower');
+                        break;
+                    case 'sniper':
+                        this.towerPreview.setTexture('sniper-tower');
+                        break;
+                    case 'splash':
+                        this.towerPreview.setTexture('splash-tower');
+                        break;
+                }
+            }
+            
+            showPlacementPreview(gridX, gridY) {
+                // Check if placement is valid
+                const canPlace = this.tdMap.canPlaceTower(gridX, gridY);
+                
+                // Position the preview
+                const worldX = gridX * this.cellSize + this.cellSize/2;
+                const worldY = gridY * this.cellSize + this.cellSize/2;
+                
+                // Show tower preview
+                this.towerPreview.setPosition(worldX, worldY);
+                this.towerPreview.setVisible(true);
+                
+                // Set alpha based on placement validity
+                this.towerPreview.setAlpha(canPlace ? 0.8 : 0.4);
+                
+                // Show range indicator
+                this.rangeIndicator.setPosition(worldX, worldY);
+                this.rangeIndicator.setVisible(true);
+                
+                // Set range scale based on tower type
+                let range = 2;
+                if (this.selectedTowerType === 'sniper') {
+                    range = 6;
+                } else if (this.selectedTowerType === 'splash') {
+                    range = 2.5;
+                }
+                
+                // Scale the range indicator
+                const rangeScale = (range * this.cellSize) / 100;
+                this.rangeIndicator.setScale(rangeScale);
+                
+                // Set range indicator alpha
+                this.rangeIndicator.setAlpha(canPlace ? 0.5 : 0.2);
+            }
+            
+            placeTower(gridX, gridY) {
+                // Check if tower can be placed
+                if (!this.tdMap.canPlaceTower(gridX, gridY)) {
+                    displayError('Cannot place tower here!');
+                    return false;
+                }
+                
+                // Get tower cost based on type
+                let cost = 50;
+                if (this.selectedTowerType === 'sniper') {
+                    cost = 100;
+                } else if (this.selectedTowerType === 'splash') {
+                    cost = 150;
+                }
+                
+                // Check if player has enough gold
+                if (this.gameState.gold < cost) {
+                    displayError('Not enough gold to place this tower!');
+                    return false;
+                }
+                
+                // Create new tower
+                const tower = new Tower(this.selectedTowerType, gridX, gridY);
+                
+                // Spend gold
+                this.gameState.spendGold(tower.cost);
+                
+                // Update map
+                this.tdMap.placeTower(gridX, gridY);
+                
+                // Add tower to game state
+                this.gameState.addTower(tower);
+                
+                // Create tower sprite
+                const worldX = gridX * this.cellSize + this.cellSize/2;
+                const worldY = gridY * this.cellSize + this.cellSize/2;
+                
+                let towerSprite;
+                switch(tower.type) {
+                    case 'basic':
+                        towerSprite = this.add.image(worldX, worldY, 'basic-tower');
+                        break;
+                    case 'sniper':
+                        towerSprite = this.add.image(worldX, worldY, 'sniper-tower');
+                        break;
+                    case 'splash':
+                        towerSprite = this.add.image(worldX, worldY, 'splash-tower');
+                        break;
+                    default:
+                        towerSprite = this.add.image(worldX, worldY, 'basic-tower');
+                }
+                
+                // Scale tower to fit cell
+                towerSprite.setScale(this.cellSize/100 * 0.7);
+                
+                // Store reference to gridX and gridY for reference
+                towerSprite.setData('gridX', gridX);
+                towerSprite.setData('gridY', gridY);
+                towerSprite.setData('tower', tower);
+                
+                // Add to container
+                this.towerContainer.add(towerSprite);
+                
+                // Hide placement preview
+                this.towerPreview.setVisible(false);
+                this.rangeIndicator.setVisible(false);
+                
+                return true;
+            }
+            
+            removeTower(gridX, gridY) {
+                // Find tower at this grid position
+                const tower = this.gameState.getTower(gridX, gridY);
+                
+                if (!tower) {
+                    return false;
+                }
+                
+                // Remove from game state
+                if (this.gameState.removeTower(gridX, gridY)) {
+                    // Update map
+                    this.tdMap.removeTower(gridX, gridY);
+                    
+                    // Remove tower sprite
+                    this.towerContainer.getAll().forEach(sprite => {
+                        if (sprite.getData('gridX') === gridX && sprite.getData('gridY') === gridY) {
+                            sprite.destroy();
+                        }
+                    });
+                    
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            cancelTowerPlacement() {
+                this.selectedTowerType = null;
+                this.towerPreview.setVisible(false);
+                this.rangeIndicator.setVisible(false);
+            }
+            
             setupCameraControls() {
                 // Enable camera controls
                 const cam = this.cameras.main;
@@ -546,9 +1293,15 @@
                 
                 // Drag to pan
                 this.input.on('pointerdown', (pointer) => {
-                    this.isDragging = true;
-                    this.dragStartX = pointer.x;
-                    this.dragStartY = pointer.y;
+                    // If middle button or right button (or holding space), start panning
+                    if (pointer.middleButtonDown() || 
+                        (pointer.rightButtonDown() && !this.input.keyboard.checkDown(this.input.keyboard.addKey('SHIFT'))) || 
+                        this.input.keyboard.checkDown(this.input.keyboard.addKey('SPACE'))) {
+                        
+                        this.isDragging = true;
+                        this.dragStartX = pointer.x;
+                        this.dragStartY = pointer.y;
+                    }
                 });
                 
                 this.input.on('pointermove', (pointer) => {
@@ -646,10 +1399,10 @@
                 
                 // Update text display to show current zoom level
                 const infoPanel = document.getElementById('info-panel');
-                infoPanel.textContent = `Tower Defense Map (${this.tdMap.width}x${this.tdMap.height}) - Zoom: ${newZoom.toFixed(2)}x`;
+                infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${newZoom.toFixed(2)}x`;
             }
             
-            update() {
+            update(time, delta) {
                 // Keyboard controls for camera
                 if (this.cursors) {
                     const speed = 10 / this.cameras.main.zoom;
@@ -675,6 +1428,10 @@
                     const newZoom = Math.max(0.5, this.cameras.main.zoom - 0.01);
                     this.zoomCamera(newZoom);
                 }
+                
+                // Update info panel with gold
+                const infoPanel = document.getElementById('info-panel');
+                infoPanel.textContent = `Tower Defense Map - Gold: ${this.gameState.gold} - Zoom: ${this.currentZoom.toFixed(2)}x`;
             }
         }
         
