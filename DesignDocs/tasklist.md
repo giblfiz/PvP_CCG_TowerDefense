@@ -7,19 +7,24 @@
    - Moved all CSS styles from `phaser-map.html` to the new file
    - Added a link element in `phaser-map.html` to reference the external CSS file
 
+2. **Extract Mook class to external file**
+   - Created a new class `PhaserMook` in `src/core/PhaserMook.js`
+   - Moved Mook class definition from `phaser-map.html` to the new file
+   - Added script tag to load the new file
+   - Created alias `Mook = PhaserMook` to maintain compatibility
+
 ## Current Code Structure
 
-The current `phaser-map.html` file is a monolithic file containing:
+The current `phaser-map.html` file now contains:
 - HTML structure
-- CSS styles (now moved to external file)
 - JavaScript error handling
-- JavaScript game class definitions (Mook, Tower, TDMap, GameState, MapScene)
+- External CSS and JavaScript file references
+- JavaScript game class definitions (Tower, TDMap, GameState, MapScene)
 - Game initialization code
 
 ## Planned Next Steps
 
-1. **Extract JavaScript game classes**
-   - Move Mook class to `src/core/Mook.js`
+1. **Extract remaining JavaScript game classes**
    - Move Tower class to `src/core/Tower.js`
    - Move TDMap class to `src/core/Map.js`
    - Move GameState class to `src/core/GameState.js`
