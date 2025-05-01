@@ -1148,6 +1148,12 @@
             }
             
             updateTowers(time) {
+                // Temporarily disable tower attacking here since we're handling it in the scene for visuals
+                // This prevents double damage
+                
+                // We will re-enable this once we refactor to separate visual effects from game logic
+                
+                /*
                 for (const tower of this.towers) {
                     // Try to attack a target
                     const attackResults = tower.attackTarget(time, this.mooks, 60); // 60 is cellSize
@@ -1161,6 +1167,7 @@
                         }
                     }
                 }
+                */
             }
         }
     
@@ -1550,17 +1557,20 @@
             }
             
             renderMap() {
-                // Container for all map cells
+                // Create containers in the correct order for proper layering
+                // (later containers appear on top)
+                
+                // Container for all map cells (bottom layer)
                 this.mapContainer = this.add.container(0, 0);
                 
-                // Container for all towers
+                // Container for attack effects (middle layer)
+                this.effectsContainer = this.add.container(0, 0);
+                
+                // Container for all towers (upper middle layer)
                 this.towerContainer = this.add.container(0, 0);
                 
-                // Container for all mooks
+                // Container for all mooks (top layer)
                 this.mookContainer = this.add.container(0, 0);
-                
-                // Container for attack effects
-                this.effectsContainer = this.add.container(0, 0);
                 
                 // Cells
                 this.cellSprites = [];
@@ -2479,18 +2489,70 @@
                     this.zoomCamera(newZoom);
                 }
                 
-                // Update game state
+                // Update game state (this already handles tower attacks in GameState.updateTowers)
                 this.gameState.update(time, delta);
                 
                 // Update mook sprites
                 this.updateMookSprites();
                 
-                // Check for tower attacks and update effects
+                // Handle tower attacks and their visual effects
                 if (this.gameState.towers && this.gameState.towers.length > 0) {
                     for (const tower of this.gameState.towers) {
-                        const attackResult = tower.attackTarget(time, this.gameState.mooks, this.cellSize);
-                        if (attackResult) {
-                            this.createTowerAttackEffects(tower, attackResult);
+                        // Check if tower can fire
+                        if (tower.canFire(time)) {
+                            // Find a target
+                            const target = tower.findTarget(this.gameState.mooks, this.cellSize);
+                            if (target) {
+                                // Apply damage from tower to target
+                                const damage = tower.fire(time);
+                                
+                                // Handle splash damage
+                                if (tower.splashRadius > 0) {
+                                    // Find all mooks in splash radius
+                                    const splashedMooks = this.gameState.mooks.filter(mook => {
+                                        if (!mook.active || mook.reachedEnd) return false;
+                                        if (mook === target) return true; // Direct target always gets hit
+                                        
+                                        const dx = Math.abs(mook.position.x - target.position.x);
+                                        const dy = Math.abs(mook.position.y - target.position.y);
+                                        return dx <= tower.splashRadius && dy <= tower.splashRadius;
+                                    });
+                                    
+                                    // Apply damage to all mooks in splash radius
+                                    const attackResults = [];
+                                    for (const mook of splashedMooks) {
+                                        const distanceRatio = mook === target ? 1 : 0.5; // Reduced damage for splash
+                                        const isDead = mook.takeDamage(damage * distanceRatio);
+                                        if (isDead) {
+                                            this.gameState.mookKilled(mook);
+                                            attackResults.push({
+                                                mook,
+                                                isDead: true
+                                            });
+                                        } else {
+                                            attackResults.push({
+                                                mook,
+                                                isDead: false
+                                            });
+                                        }
+                                    }
+                                    
+                                    // Create visual effects
+                                    this.createTowerAttackEffects(tower, attackResults);
+                                } else {
+                                    // Direct damage to a single target
+                                    const isDead = target.takeDamage(damage);
+                                    if (isDead) {
+                                        this.gameState.mookKilled(target);
+                                    }
+                                    
+                                    // Create visual effects
+                                    this.createTowerAttackEffects(tower, [{
+                                        mook: target,
+                                        isDead
+                                    }]);
+                                }
+                            }
                         }
                     }
                 }
