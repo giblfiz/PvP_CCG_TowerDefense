@@ -8,8 +8,8 @@ class ServerLogger {
             endpoint: options.endpoint || '/api/log',
             enabled: options.enabled !== undefined ? options.enabled : true,
             logToConsole: options.logToConsole !== undefined ? options.logToConsole : true,
-            batchInterval: options.batchInterval || 1000, // ms
-            maxBatchSize: options.maxBatchSize || 20,
+            batchInterval: options.batchInterval || 3000, // ms - longer interval to reduce load
+            maxBatchSize: options.maxBatchSize || 50, // larger batch size for efficiency
             contextInfo: options.contextInfo || {}
         };
         

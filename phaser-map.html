@@ -201,7 +201,7 @@
                 endpoint: '/api/log',
                 enabled: false, // Disabled by default
                 logToConsole: true,
-                batchInterval: 1000,
+                batchInterval: 3000, // Longer interval to reduce performance impact
                 contextInfo: {
                     gameVersion: '1.0.0',
                     url: window.location.href
@@ -268,15 +268,14 @@
             // Call original method
             originalConsoleLog.apply(console, arguments);
             
-            // Send important logs to server logger if enabled
+            // Send important logs to server logger if enabled - with much stricter filtering to prevent overload
             if (logger && logger.options.enabled) {
                 const logMessage = Array.from(arguments).join(' ');
-                if (logMessage.includes('cleanup') || 
-                    logMessage.includes('Mook') || 
-                    logMessage.includes('sprite') ||
-                    logMessage.includes('tower') ||
-                    logMessage.includes('wave') ||
-                    logMessage.includes('gold')) {
+                // Only log critical cleanup messages to avoid flooding
+                if ((logMessage.includes('cleanup') && logMessage.includes('complete')) || 
+                    (logMessage.includes('Force cleanup') && !logMessage.includes('clicked')) || 
+                    (logMessage.includes('Destroyed') && logMessage.includes('sprite')) ||
+                    (logMessage.includes('PERIODIC CLEANUP') || logMessage.includes('BEFORE CLEANUP') || logMessage.includes('AFTER CLEANUP'))) {
                     logger.info(logMessage);
                 }
             }
