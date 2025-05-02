@@ -16,3 +16,5 @@ logs/*
 .temp/
 *.swp
 vendors/phaser/phaser.js
+
+**/.claude/settings.local.json
