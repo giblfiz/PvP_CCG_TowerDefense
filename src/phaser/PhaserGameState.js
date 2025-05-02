@@ -7,7 +7,7 @@ class GameState {
      * Create a new game state
      */
     constructor() {
-        this.gold = 600;
+        this.gold = 100; // Reduced from 600 to 100 for increased difficulty
         this.lives = 20;
         this.wave = 0;
         this.towers = [];
@@ -21,8 +21,8 @@ class GameState {
         
         // Wave configuration
         this.waveConfig = {
-            spawnDelay: 1000, // ms between spawns
-            mooksPerWave: 10, // base number of mooks per wave
+            spawnDelay: 1000, // ms between spawns (will decrease rapidly with wave number)
+            mooksPerWave: 10, // base number of mooks per wave (will increase with wave number)
             mookTypes: [
                 { type: Mook.MOOK_STANDARD, weight: 100 },
                 { type: Mook.MOOK_FAST, weight: 0 },
@@ -33,7 +33,7 @@ class GameState {
             specialMooks: {
                 [Mook.MOOK_FAST]: 2, // Fast mooks appear at wave 2
                 [Mook.MOOK_ARMORED]: 3, // Armored mooks appear at wave 3
-                [Mook.MOOK_TANK]: 5 // Tank mooks appear at wave 5
+                [Mook.MOOK_TANK]: 4 // Tank mooks appear at wave 4 (earlier than before)
             },
             maxWaves: 10
         };
@@ -103,8 +103,8 @@ class GameState {
             this.mooksLeaked = 0;
             this.mooks = [];
             
-            // Add bonus gold for starting a wave
-            this.addGold(25);
+            // Add small bonus gold for starting a wave (reduced from 25)
+            this.addGold(15);
             
             // Update wave configuration based on wave number
             this.updateWaveConfig();
@@ -124,25 +124,29 @@ class GameState {
         // Update mook type weights based on wave number
         this.waveConfig.mookTypes.forEach(mookType => {
             if (mookType.type === Mook.MOOK_STANDARD) {
-                // Standard mooks always present but decrease in later waves
-                mookType.weight = Math.max(10, 100 - this.wave * 10);
+                // Standard mooks decrease much faster in later waves
+                mookType.weight = Math.max(5, 100 - this.wave * 15);
             } else if (mookType.type === Mook.MOOK_FAST && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_FAST]) {
-                // Fast mooks appear at wave 2 and increase
-                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_FAST] + 1) * 20;
+                // Fast mooks appear at wave 2 and increase more rapidly
+                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_FAST] + 1) * 30;
             } else if (mookType.type === Mook.MOOK_ARMORED && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_ARMORED]) {
-                // Armored mooks appear at wave 3 and increase
-                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_ARMORED] + 1) * 15;
+                // Armored mooks appear at wave 3 and increase more rapidly
+                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_ARMORED] + 1) * 25;
             } else if (mookType.type === Mook.MOOK_TANK && this.wave >= this.waveConfig.specialMooks[Mook.MOOK_TANK]) {
-                // Tank mooks appear at wave 5 and increase slowly
-                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_TANK] + 1) * 10;
+                // Tank mooks appear at wave 4 and increase faster
+                mookType.weight = (this.wave - this.waveConfig.specialMooks[Mook.MOOK_TANK] + 1) * 20;
             }
         });
         
-        // Increase mooks per wave
-        this.waveConfig.mooksPerWave = 10 + (this.wave * 2);
+        // Increase mooks per wave more aggressively
+        this.waveConfig.mooksPerWave = 10 + (this.wave * this.wave);
         
-        // Decrease spawn delay slightly
-        this.waveConfig.spawnDelay = Math.max(500, 1000 - (this.wave * 50));
+        // Decrease spawn delay more aggressively with each wave
+        // By wave 5, spawn delay will be very short, and by wave 10 almost instant
+        this.waveConfig.spawnDelay = Math.max(100, 1000 - (this.wave * this.wave * 10));
+        
+        // Debugging
+        console.log(`Wave ${this.wave} config: ${this.waveConfig.mooksPerWave} mooks, ${this.waveConfig.spawnDelay}ms spawn delay`);
     }
     
     /**
@@ -263,9 +267,9 @@ class GameState {
             this.waveTimer = null;
         }
         
-        // Add wave completion bonus if not game over
+        // Add reduced wave completion bonus if not game over
         if (!this.gameOver) {
-            this.addGold(50 + (this.wave * 10));
+            this.addGold(30 + (this.wave * 5));
             
             // Check for game win
             if (this.wave >= this.waveConfig.maxWaves) {

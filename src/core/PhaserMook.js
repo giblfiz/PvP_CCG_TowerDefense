@@ -26,32 +26,32 @@ class PhaserMook {
                 this.maxHealth = 80;
                 this.health = 80;
                 this.speed = 1.5;
-                this.reward = 10;
-                this.damage = 1;
+                this.reward = 8; // Reduced from 10
+                this.damage = 2; // Increased from 1
                 this.emoji = '🚀';
                 break;
             case PhaserMook.MOOK_ARMORED:
                 this.maxHealth = 150;
                 this.health = 150;
                 this.speed = 0.9;
-                this.reward = 20;
-                this.damage = 1;
+                this.reward = 15; // Reduced from 20
+                this.damage = 2; // Increased from 1
                 this.emoji = '🛡️';
                 break;
             case PhaserMook.MOOK_TANK:
                 this.maxHealth = 300;
                 this.health = 300;
                 this.speed = 0.7;
-                this.reward = 30;
-                this.damage = 2;
+                this.reward = 20; // Reduced from 30
+                this.damage = 3; // Increased from 2
                 this.emoji = '🦖';
                 break;
             default: // Standard
                 this.maxHealth = 100;
                 this.health = 100;
                 this.speed = 1.0;
-                this.reward = 15;
-                this.damage = 1;
+                this.reward = 10; // Reduced from 15
+                this.damage = 2; // Increased from 1
                 this.emoji = '👾';
         }
     }
