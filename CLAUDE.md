@@ -1,3 +1,9 @@
+   # Critial Patterns:
+	- DO NOT IMPLEMENT EXTRA FEATURES 
+	- the second rule for claude code is DO NOT IMPLEMENT EXTRA FEATURES
+	- to clarify, we are trying to take small feature sized bites, and make sure that they work at every stage. If I tell you to move file XYZ.js and to new/XX.js and then fix refrences to it, DO NOT REFACTOR XYZ.js, just do the minimum amount you need to to get the move working. If I want you to/ refactor XYZ.js. EVEN IF REFACTORING IT IS ON YOUR TODO LIST, don't do it until I ask. 
+	- our patter with github will be "check in what I just reviewed from last time, then work on the new thing I assign" Do NOT check in after you finish a task, check in after I verify that the task is working. 
+
    # Common bash commands
 	- 
    # Core files and utility functions
