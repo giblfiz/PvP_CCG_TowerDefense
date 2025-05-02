@@ -83,7 +83,7 @@ class GameState {
       // Select mook class based on type
       let mook;
       if (config.type === 'tank') {
-        mook = new (require('./TankMook'))({
+        mook = new (require('./mooks/TankMook'))({
           position,
           ...config
         });
@@ -110,7 +110,7 @@ class GameState {
     // Create mook with spawn point position and path based on type
     let mook;
     if (config.type === 'tank') {
-      mook = new (require('./TankMook'))({
+      mook = new (require('./mooks/TankMook'))({
         position: { ...spawnPoint },
         path: [...path],
         ...config

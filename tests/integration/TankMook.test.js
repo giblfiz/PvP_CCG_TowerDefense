@@ -1,6 +1,6 @@
 const Tower = require('../../src/core/Tower');
-const Mook = require('../../src/core/Mook');
-const TankMook = require('../../src/core/TankMook');
+const Mook = require('../../src/core/mooks/Mook');
+const TankMook = require('../../src/core/mooks/TankMook');
 const GameState = require('../../src/core/GameState');
 
 describe('TankMook Integration', () => {
@@ -128,7 +128,7 @@ describe('TankMook Integration', () => {
     const originalSpawn = gameState.spawnMook;
     gameState.spawnMook = function(config = {}) {
       if (config.type === 'tank') {
-        const TankMook = require('../../src/core/TankMook');
+        const TankMook = require('../../src/core/mooks/TankMook');
         const position = this.map ? { ...this.map.getPath(config.pathIndex || 0)[0] } : { x: 0, y: 0 };
         const mook = new TankMook({
           position,

@@ -1,4 +1,4 @@
-const Mook = require('../../src/core/Mook');
+const Mook = require('../../src/core/mooks/Mook');
 
 describe('Mook', () => {
   // Test mook initialization

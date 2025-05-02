@@ -1,5 +1,5 @@
 const Tower = require('../../src/core/Tower');
-const Mook = require('../../src/core/Mook');
+const Mook = require('../../src/core/mooks/Mook');
 const GameState = require('../../src/core/GameState');
 
 describe('Tower and Mook Integration', () => {

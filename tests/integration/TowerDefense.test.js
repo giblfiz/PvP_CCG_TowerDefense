@@ -1,5 +1,5 @@
 const Tower = require('../../src/core/Tower');
-const Enemy = require('../../src/core/Enemy');
+const Mook = require('../../src/core/mooks/Mook');
 const GameState = require('../../src/core/GameState');
 
 describe('Tower Defense Integration', () => {
@@ -17,13 +17,13 @@ describe('Tower Defense Integration', () => {
     gameState.addTower(tower);
     
     // Add enemies
-    const enemy1 = new Enemy({
+    const enemy1 = new Mook({
       position: { x: 120, y: 120 }, // In range
       health: 100,
       speed: 1
     });
     
-    const enemy2 = new Enemy({
+    const enemy2 = new Mook({
       position: { x: 200, y: 200 }, // Out of range
       health: 100,
       speed: 1
@@ -55,13 +55,13 @@ describe('Tower Defense Integration', () => {
     gameState.addTower(tower);
     
     // Add enemies
-    const enemy1 = new Enemy({
+    const enemy1 = new Mook({
       position: { x: 150, y: 150 }, // Distance ~70.7
       health: 100,
       speed: 1
     });
     
-    const enemy2 = new Enemy({
+    const enemy2 = new Mook({
       position: { x: 120, y: 120 }, // Distance ~28.3 (closer)
       health: 100,
       speed: 1

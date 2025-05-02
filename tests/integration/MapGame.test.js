@@ -1,6 +1,6 @@
 const Map = require('../../src/core/Map');
 const Tower = require('../../src/core/Tower');
-const Mook = require('../../src/core/Mook');
+const Mook = require('../../src/core/mooks/Mook');
 const GameState = require('../../src/core/GameState');
 
 describe('Map and Game Integration', () => {
@@ -97,7 +97,7 @@ describe('Map and Game Integration', () => {
     const gameState = new GameState({ map });
     
     // Create a mook directly to control its position exactly
-    const mook = new (require('../../src/core/Mook'))({
+    const mook = new (require('../../src/core/mooks/Mook'))({
       position: { ...spawnPoint },
       path: [...path],
       speed: 2, // 2 units per second
@@ -167,7 +167,7 @@ describe('Map and Game Integration', () => {
     gameState.addTower(tower);
     
     // Create a mook already in range of the tower
-    const mook = new (require('../../src/core/Mook'))({
+    const mook = new (require('../../src/core/mooks/Mook'))({
       position: { x: 2, y: 5 }, // Right in range of the tower
       path: [...path],
       pathIndex: 2,

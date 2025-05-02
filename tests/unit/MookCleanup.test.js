@@ -93,7 +93,9 @@ class MockScene {
             });
           }
           
-          mook.sprite.visible = false;
+          if (mook.sprite) {
+            mook.sprite.visible = false;
+          }
         } else {
           // Update position for active mooks
           mook.sprite.setPosition = jest.fn();

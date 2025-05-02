@@ -1,5 +1,5 @@
-const TankMook = require('../../src/core/TankMook');
-const Mook = require('../../src/core/Mook');
+const TankMook = require('../../src/core/mooks/TankMook');
+const Mook = require('../../src/core/mooks/Mook');
 
 describe('TankMook', () => {
   // Test TankMook initialization
