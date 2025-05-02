@@ -34,6 +34,21 @@ class MapScene extends Phaser.Scene {
         
         // Create textures for map cells and towers
         this.renderer.createTextures();
+        
+        // Pre-initialize tower info panel elements
+        this.towerInfoPanel = document.getElementById('tower-info');
+        this.towerInfoType = document.getElementById('tower-info-type');
+        this.towerLevelValue = document.getElementById('tower-level-value');
+        this.towerDamageValue = document.getElementById('tower-damage-value');
+        this.towerRangeValue = document.getElementById('tower-range-value');
+        this.towerAmmoValue = document.getElementById('tower-ammo-value');
+        this.sellValue = document.getElementById('sell-value');
+        
+        if (!this.towerInfoPanel) {
+            console.error("Tower info panel not found in preload");
+        } else {
+            console.log("Tower info panel found in preload:", this.towerInfoPanel);
+        }
     }
     
     create() {
@@ -124,9 +139,14 @@ class MapScene extends Phaser.Scene {
                 }
                 
                 cellSprite.setScale(this.cellSize/100); // Scale to cell size
-                cellSprite.setInteractive();
+                // Create a smaller hit area for the cell to avoid overlap with tower sprites
+                cellSprite.setInteractive(new Phaser.Geom.Rectangle(
+                    0, 0, this.cellSize, this.cellSize
+                ), Phaser.Geom.Rectangle.Contains);
+                
                 cellSprite.setData('gridX', x);
                 cellSprite.setData('gridY', y);
+                cellSprite.setData('isCellSprite', true);
                 
                 this.cellSprites[x][y] = cellSprite;
                 this.mapContainer.add(cellSprite);
@@ -650,37 +670,56 @@ class MapScene extends Phaser.Scene {
     }
     
     setupCellClicks() {
-        // Tower info panel elements
-        this.towerInfoPanel = document.getElementById('tower-info');
-        this.towerInfoType = document.getElementById('tower-info-type');
-        this.towerLevelValue = document.getElementById('tower-level-value');
-        this.towerDamageValue = document.getElementById('tower-damage-value');
-        this.towerRangeValue = document.getElementById('tower-range-value');
-        this.towerAmmoValue = document.getElementById('tower-ammo-value');
-        this.sellValue = document.getElementById('sell-value');
+        // We won't store references to DOM elements as class properties
+        // We'll work directly with the DOM when needed
         
         // Currently selected tower for info display
         this.selectedTower = null;
         this.selectedTowerGridX = -1;
         this.selectedTowerGridY = -1;
         
-        // Setup sell button
-        document.getElementById('sell-tower-button').addEventListener('click', () => {
-            if (this.selectedTower) {
-                // Call the sell tower function
-                const refundAmount = this.sellTower(this.selectedTowerGridX, this.selectedTowerGridY);
-                if (refundAmount > 0) {
-                    displayError(`Tower sold for ${refundAmount} gold`);
-                    this.hideTowerInfo();
+        // Setup sell button with a simple click handler
+        const sellButton = document.getElementById('sell-button');
+        if (sellButton) {
+            // Add the event listener directly to the button
+            sellButton.addEventListener('click', (event) => {
+                console.log("Sell button clicked");
+                
+                if (this.selectedTower) {
+                    // Call the sell tower function
+                    const refundAmount = this.sellTower(this.selectedTowerGridX, this.selectedTowerGridY);
+                    if (refundAmount > 0) {
+                        displayError(`Tower sold for ${refundAmount} gold!`);
+                        document.getElementById('tower-info').style.display = 'none';
+                        this.selectedTower = null;
+                    }
                 }
-            }
-        });
+                
+                // Prevent the event from propagating to the game canvas
+                event.stopPropagation();
+            });
+        }
         
         // Click anywhere on game to hide tower info
         this.input.on('pointerdown', (pointer) => {
+            // Check if the click was on the tower info panel
+            const towerInfoPanel = document.getElementById('tower-info');
+            
+            // Don't hide panel if clicking within tower info panel bounds
+            if (towerInfoPanel && towerInfoPanel.style.display === 'block') {
+                const rect = towerInfoPanel.getBoundingClientRect();
+                if (pointer.x >= rect.left && pointer.x <= rect.right &&
+                    pointer.y >= rect.top && pointer.y <= rect.bottom) {
+                    console.log("Click inside tower info panel - not hiding");
+                    return;
+                }
+            }
+            
             // Hide tower info if clicking outside a cell (in empty space)
             if (!pointer.gameObject && !this.isDragging) {
-                this.hideTowerInfo();
+                console.log("Click in empty space - hiding tower info");
+                document.getElementById('tower-info').style.display = 'none';
+                this.selectedTower = null;
                 this.cancelTowerPlacement();
             }
         });
@@ -689,11 +728,65 @@ class MapScene extends Phaser.Scene {
         this.input.on('gameobjectdown', (pointer, gameObject) => {
             // Only process if not dragging
             if (!this.isDragging) {
-                const gridX = gameObject.getData('gridX');
-                const gridY = gameObject.getData('gridY');
+                console.log("Clicked gameObject:", gameObject);
                 
-                // Check if there's a tower here
-                const tower = this.gameState.getTower(gridX, gridY);
+                // We need to check if we clicked on a tower container or a grid cell
+                let gridX, gridY, tower;
+                
+                // Determine what we clicked on
+                const isTowerContainer = gameObject.getData('isTowerContainer') === true;
+                const isCellSprite = gameObject.getData('isCellSprite') === true;
+                
+                console.log("Clicked on gameObject:", gameObject);
+                console.log("isTowerContainer:", isTowerContainer, "isCellSprite:", isCellSprite);
+                
+                // Get grid position from game object
+                gridX = gameObject.getData('gridX');
+                gridY = gameObject.getData('gridY');
+                
+                // Check if it's a tower container
+                if (gameObject.getData('isTowerContainer') === true) {
+                    tower = gameObject.getData('tower');
+                    console.log("Clicked on tower container at", gridX, gridY, tower);
+                } else {
+                    // Get tower from the game state for grid cells
+                    tower = this.gameState.getTower(gridX, gridY);
+                    console.log("Clicked on grid cell at", gridX, gridY, "Tower:", tower);
+                }
+                
+                // Show tower info if there's a tower
+                if (tower) {
+                    displayError("Found tower - showing info panel");
+                    
+                    // Basic tower info display
+                    document.getElementById('tower-type').textContent = tower.type;
+                    document.getElementById('tower-damage').textContent = tower.damage;
+                    document.getElementById('tower-ammo').textContent = tower.ammo;
+                    document.getElementById('sell-value').textContent = Math.floor(tower.cost * 0.5);
+                    
+                    // Store references for the sell button
+                    this.selectedTower = tower;
+                    this.selectedTowerGridX = gridX;
+                    this.selectedTowerGridY = gridY;
+                    
+                    // Show the panel
+                    document.getElementById('tower-info').style.display = 'block';
+                    
+                    // Cancel tower placement if active
+                    this.cancelTowerPlacement();
+                    
+                    // If it's a tower container, return to prevent further processing
+                    if (gameObject.getData('isTowerContainer') === true) {
+                        return;
+                    }
+                } else {
+                    // No tower - hide info
+                    document.getElementById('tower-info').style.display = 'none';
+                    this.selectedTower = null;
+                }
+                
+                // Debug info in error display 
+                displayError(`Clicked at grid (${gridX}, ${gridY}) - Tower present: ${!!tower}`);
                 
                 // If we have a tower type selected for building
                 if (this.selectedTowerType) {
@@ -720,6 +813,7 @@ class MapScene extends Phaser.Scene {
                             this.hideTowerInfo(); // Hide info if showing
                         } else {
                             // Normal click - show tower info
+                            displayError("Showing tower info panel");
                             this.showTowerInfo(tower, gridX, gridY);
                         }
                     } else {
@@ -758,34 +852,101 @@ class MapScene extends Phaser.Scene {
      * @param {number} gridY - Y position of the tower on grid
      */
     showTowerInfo(tower, gridX, gridY) {
-        // Store reference to selected tower
+        console.log("showTowerInfo called with tower:", tower, "at", gridX, gridY);
+        
+        // Check if we have valid tower data
+        if (!tower) {
+            console.error("No tower provided to showTowerInfo");
+            displayError("Error: No tower data to show");
+            return;
+        }
+        
+        // Force hide any existing tower info panel - completely new approach
+        this.hideTowerInfo();
+        
+        // Store tower reference for selling
         this.selectedTower = tower;
         this.selectedTowerGridX = gridX;
         this.selectedTowerGridY = gridY;
         
-        // Update tower info panel content
-        this.towerInfoType.textContent = this.getTowerTypeEmoji(tower.type);
-        this.towerLevelValue.textContent = tower.level;
-        this.towerDamageValue.textContent = tower.damage.toFixed(1);
-        this.towerRangeValue.textContent = tower.range.toFixed(1);
-        this.towerAmmoValue.textContent = tower.ammo;
-        
-        // Calculate refund value (50% of tower cost)
-        const refundValue = Math.floor(tower.cost * 0.5);
-        this.sellValue.textContent = refundValue;
-        
-        // Show tower info panel
-        this.towerInfoPanel.style.display = 'block';
-        
-        // Show range indicator for the selected tower
-        if (this.rangeIndicator) {
-            this.rangeIndicator.setPosition(
-                gridX * this.cellSize + this.cellSize/2,
-                gridY * this.cellSize + this.cellSize/2
-            );
-            this.rangeIndicator.setScale(tower.range * 2 * (this.cellSize/100));
-            this.rangeIndicator.setVisible(true);
-            this.rangeIndicator.setAlpha(0.3);
+        try {
+            // Get access to the DOM elements - work directly with them
+            const panel = document.getElementById('tower-info-panel');
+            const emoji = document.getElementById('tower-info-emoji');
+            const damage = document.getElementById('tower-info-damage');
+            const range = document.getElementById('tower-info-range');
+            const level = document.getElementById('tower-info-level');
+            const ammo = document.getElementById('tower-info-ammo');
+            const sellValue = document.getElementById('tower-sell-value');
+            const sellButton = document.getElementById('tower-sell-button');
+            
+            if (!panel) {
+                console.error("Tower info panel not found - ID: tower-info-panel");
+                displayError("ERROR: Tower info panel not found in DOM!");
+                return;
+            }
+            
+            // Update content directly
+            if (emoji) emoji.textContent = this.getTowerTypeEmoji(tower.type);
+            if (damage) damage.textContent = tower.damage.toFixed(1);
+            if (range) range.textContent = tower.range.toFixed(1);
+            if (level) level.textContent = tower.level;
+            if (ammo) ammo.textContent = tower.ammo;
+            
+            // Calculate refund value (50% of tower cost)
+            const refundValue = Math.floor(tower.cost * 0.5);
+            if (sellValue) sellValue.textContent = refundValue;
+            
+            // Set up the sell button click handler
+            if (sellButton) {
+                // Remove existing listeners
+                const newButton = sellButton.cloneNode(true);
+                if (sellButton.parentNode) {
+                    sellButton.parentNode.replaceChild(newButton, sellButton);
+                }
+                
+                // Add new click handler
+                newButton.addEventListener('click', (event) => {
+                    console.log("Sell button clicked for tower at", gridX, gridY);
+                    displayError(`Selling tower at (${gridX},${gridY})...`);
+                    
+                    // Sell the tower
+                    const refundAmount = this.sellTower(gridX, gridY);
+                    if (refundAmount > 0) {
+                        displayError(`Tower sold for ${refundAmount} gold!`);
+                        
+                        // Hide panel
+                        if (panel) panel.style.display = 'none';
+                    } else {
+                        displayError("Failed to sell tower!");
+                    }
+                    
+                    // Prevent event propagation
+                    event.stopPropagation();
+                });
+            }
+            
+            // Display the panel with important visual indicators
+            panel.style.display = 'block';
+            
+            // Show range indicator for the tower
+            if (this.rangeIndicator) {
+                this.rangeIndicator.setPosition(
+                    gridX * this.cellSize + this.cellSize/2,
+                    gridY * this.cellSize + this.cellSize/2
+                );
+                this.rangeIndicator.setScale(tower.range * 2 * (this.cellSize/100));
+                this.rangeIndicator.setVisible(true);
+                this.rangeIndicator.setAlpha(0.3);
+            }
+            
+            // Log debug info
+            console.log("Tower info panel shown:", panel);
+            displayError(`Tower info panel should be visible now - ${tower.type} tower at (${gridX},${gridY})`);
+            
+        } catch (error) {
+            console.error("Error showing tower info:", error);
+            displayError("Error showing tower info: " + error.message);
         }
     }
     
@@ -793,8 +954,13 @@ class MapScene extends Phaser.Scene {
      * Hide tower info panel
      */
     hideTowerInfo() {
-        // Hide tower info panel
-        this.towerInfoPanel.style.display = 'none';
+        // Get panel directly to ensure we have it
+        const panel = document.getElementById('tower-info-panel');
+        if (panel) {
+            // Hide tower info panel
+            panel.style.display = 'none';
+            console.log("Hiding tower info panel");
+        }
         
         // Clear selected tower reference
         this.selectedTower = null;
@@ -832,8 +998,11 @@ class MapScene extends Phaser.Scene {
      * @returns {number} - Amount of gold refunded
      */
     sellTower(gridX, gridY) {
+        console.log(`Selling tower at (${gridX}, ${gridY})`);
+        
         // Get refund amount from game state
         const refundAmount = this.gameState.sellTower(gridX, gridY);
+        console.log(`Refund amount: ${refundAmount}`);
         
         if (refundAmount > 0) {
             // Update map
@@ -845,6 +1014,12 @@ class MapScene extends Phaser.Scene {
                     container.destroy();
                 }
             });
+            
+            // Hide the tower info panel
+            document.getElementById('tower-info').style.display = 'none';
+            
+            // Clear selection
+            this.selectedTower = null;
             
             return refundAmount;
         }
@@ -932,6 +1107,12 @@ class MapScene extends Phaser.Scene {
         // Create a container for the tower and its ammo bar
         const towerContainer = this.add.container(worldX, worldY);
         
+        // Make the container interactive
+        towerContainer.setInteractive(new Phaser.Geom.Rectangle(
+            -this.cellSize/2, -this.cellSize/2, 
+            this.cellSize, this.cellSize
+        ), Phaser.Geom.Rectangle.Contains);
+        
         // Add tower sprite to container
         let towerSprite;
         switch(tower.type) {
@@ -986,9 +1167,16 @@ class MapScene extends Phaser.Scene {
         towerContainer.setData('gridX', gridX);
         towerContainer.setData('gridY', gridY);
         towerContainer.setData('tower', tower);
+        towerContainer.setData('isTowerContainer', true);
+        
+        // Store reference in the tower object too for easier access
+        tower.sprite = towerContainer;
         
         // Add to container
         this.towerContainer.add(towerContainer);
+        
+        // Log that a tower was placed
+        console.log(`Tower placed at (${gridX}, ${gridY})`, tower, towerContainer);
         
         // Hide placement preview
         this.towerPreview.setVisible(false);

@@ -126,13 +126,14 @@ body {
     position: fixed;
     bottom: 80px;
     right: 10px;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.9);
     padding: 12px;
     border-radius: 8px;
-    z-index: 100;
+    z-index: 2000;
     color: white;
     width: 180px;
-    border: 2px solid #888;
+    border: 2px solid #ff0000;
+    pointer-events: auto;
 }
 
 #tower-info-content {
@@ -150,13 +151,17 @@ body {
 #sell-tower-button {
     background-color: #aa3333;
     color: white;
-    border: none;
+    border: 2px solid #ff0000;
     padding: 8px;
     border-radius: 4px;
     cursor: pointer;
-    margin-top: 5px;
+    margin-top: 10px;
     font-weight: bold;
     transition: background-color 0.2s;
+    font-size: 16px;
+    z-index: 2100;
+    width: 100%;
+    display: block;
 }
 
 #sell-tower-button:hover {

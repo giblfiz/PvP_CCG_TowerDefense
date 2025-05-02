@@ -52,15 +52,14 @@
         </div>
     </div>
     
-    <div id="tower-info" style="display: none;">
-        <div id="tower-info-content">
-            <div id="tower-info-type"></div>
-            <div id="tower-info-level">Level: <span id="tower-level-value">1</span></div>
-            <div id="tower-info-damage">Damage: <span id="tower-damage-value">0</span></div>
-            <div id="tower-info-range">Range: <span id="tower-range-value">0</span></div>
-            <div id="tower-info-ammo">Ammo: <span id="tower-ammo-value">0</span>/40</div>
-            <button id="sell-tower-button">Sell for <span id="sell-value">0</span> gold</button>
-        </div>
+    <div id="tower-info" style="display: none; position: fixed; top: 10px; left: 300px; background-color: rgba(0, 0, 0, 0.9); padding: 10px; border-radius: 5px; border: 2px solid white; color: white; width: 150px; z-index: 9999;">
+        <div id="tower-title" style="text-align: center; font-weight: bold; margin-bottom: 5px;">Tower Info</div>
+        <div>Type: <span id="tower-type">Basic</span></div>
+        <div>Damage: <span id="tower-damage">10</span></div>
+        <div>Ammo: <span id="tower-ammo">40</span></div>
+        <button id="sell-button" style="margin-top: 10px; padding: 5px; background-color: red; color: white; width: 100%; border: none;">
+            Sell for <span id="sell-value">25</span> gold
+        </button>
     </div>
     
     <div id="error-display"></div>
