@@ -88,7 +88,7 @@ class GameState {
           ...config
         });
       } else {
-        mook = new (require('./Mook'))({
+        mook = new (require('./mooks/Mook'))({
           position,
           ...config
         });
@@ -116,7 +116,7 @@ class GameState {
         ...config
       });
     } else {
-      mook = new (require('./Mook'))({
+      mook = new (require('./mooks/Mook'))({
         position: { ...spawnPoint },
         path: [...path],
         ...config

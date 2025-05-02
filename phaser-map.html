@@ -55,7 +55,7 @@
     <script src="src/ui/ServerLogger.js"></script>
     
     <!-- Load game components -->
-    <script src="src/core/PhaserMook.js"></script>
+    <script src="src/core/mooks/Mook.js"></script>
     <script src="src/phaser/PhaserRenderer.js"></script>
     <script src="src/phaser/PhaserMap.js"></script>
     <script src="src/phaser/PhaserTower.js"></script>
@@ -198,9 +198,8 @@
             console.log('Phaser loaded successfully:', Phaser.VERSION);
         }
     
-        // We're now using the PhaserMook class from an external file
-        // Define an alias to maintain compatibility with existing code
-        const Mook = PhaserMook;
+        // We're now using the Mook class directly
+        // No alias needed anymore
     
         // Initialize the game after all scripts are loaded
         window.addEventListener('load', () => {

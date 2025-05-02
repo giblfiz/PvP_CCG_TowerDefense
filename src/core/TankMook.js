@@ -1,4 +1,4 @@
-const Mook = require('./Mook');
+const Mook = require('./mooks/Mook');
 
 /**
  * Represents a tank mook in the game - higher HP and slightly faster than standard mooks
