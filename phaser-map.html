@@ -12,6 +12,9 @@
         📌 Drag to pan<br>
         🔍 Pinch/scroll to zoom<br>
         🏗️ Click to place towers<br>
+        🔄 Click tower to view info<br>
+        💰 Sell towers for 50% refund<br>
+        ❌ Esc key or click to cancel<br>
         <button id="cleanup-button" style="margin-top: 10px; padding: 5px; cursor: pointer;">Force Cleanup</button>
     </div>
     <div id="game-container"></div>
@@ -46,6 +49,17 @@
         <div class="tower-button" data-type="splash" data-cost="150">
             🏰
             <div class="tower-cost">150</div>
+        </div>
+    </div>
+    
+    <div id="tower-info" style="display: none;">
+        <div id="tower-info-content">
+            <div id="tower-info-type"></div>
+            <div id="tower-info-level">Level: <span id="tower-level-value">1</span></div>
+            <div id="tower-info-damage">Damage: <span id="tower-damage-value">0</span></div>
+            <div id="tower-info-range">Range: <span id="tower-range-value">0</span></div>
+            <div id="tower-info-ammo">Ammo: <span id="tower-ammo-value">0</span>/40</div>
+            <button id="sell-tower-button">Sell for <span id="sell-value">0</span> gold</button>
         </div>
     </div>
     

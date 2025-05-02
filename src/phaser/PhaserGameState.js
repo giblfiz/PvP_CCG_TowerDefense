@@ -324,19 +324,42 @@ class GameState {
      * Remove a tower from the game
      * @param {number} gridX - X position of the tower on grid
      * @param {number} gridY - Y position of the tower on grid
+     * @param {number} [refundPercent=0.7] - Percentage of tower cost to refund (0-1)
      * @returns {boolean} Whether the tower was removed
      */
-    removeTower(gridX, gridY) {
+    removeTower(gridX, gridY, refundPercent = 0.7) {
         const index = this.towers.findIndex(t => t.gridX === gridX && t.gridY === gridY);
         if (index !== -1) {
             const tower = this.towers[index];
             this.towers.splice(index, 1);
             
-            // Refund some of the cost
-            this.addGold(Math.floor(tower.cost * 0.7));
+            // Refund some of the cost based on the refund percentage
+            const refundAmount = Math.floor(tower.cost * refundPercent);
+            this.addGold(refundAmount);
             return true;
         }
         return false;
+    }
+    
+    /**
+     * Sell a tower and get a refund
+     * @param {number} gridX - X position of the tower on grid
+     * @param {number} gridY - Y position of the tower on grid
+     * @returns {number} Amount of gold refunded, or -1 if tower wasn't found
+     */
+    sellTower(gridX, gridY) {
+        const tower = this.getTower(gridX, gridY);
+        if (!tower) return -1;
+        
+        // Calculate refund (50% of tower cost)
+        const refundAmount = Math.floor(tower.cost * 0.5);
+        
+        // Remove the tower with the 50% refund
+        if (this.removeTower(gridX, gridY, 0.5)) {
+            return refundAmount;
+        }
+        
+        return -1;
     }
     
     /**

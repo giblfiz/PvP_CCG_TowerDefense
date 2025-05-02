@@ -230,9 +230,22 @@ class MapScene extends Phaser.Scene {
                 const towerType = button.getAttribute('data-type');
                 const towerCost = parseInt(button.getAttribute('data-cost'));
                 
+                // If this tower type is already selected, cancel placement (toggle behavior)
+                if (this.selectedTowerType === towerType) {
+                    this.cancelTowerPlacement();
+                    buttons.forEach(b => b.classList.remove('selected'));
+                    return;
+                }
+                
+                // Hide tower info if showing
+                this.hideTowerInfo();
+                
                 // Check if user has enough gold
                 if (this.gameState.gold < towerCost) {
                     displayError('Not enough gold to place this tower!');
+                    // Still cancel any previous selection
+                    this.cancelTowerPlacement();
+                    buttons.forEach(b => b.classList.remove('selected'));
                     return;
                 }
                 
@@ -250,6 +263,9 @@ class MapScene extends Phaser.Scene {
             this.cancelTowerPlacement();
             buttons.forEach(b => b.classList.remove('selected'));
         });
+        
+        // Store button references for easy access
+        this.towerButtons = buttons;
     }
     
     setupWaveControls() {
@@ -634,29 +650,82 @@ class MapScene extends Phaser.Scene {
     }
     
     setupCellClicks() {
-        // Add click handler for grid cells to place towers
-        this.input.on('gameobjectdown', (pointer, gameObject) => {
-            // Only process if not dragging and we have a tower selected
-            if (!this.isDragging && this.selectedTowerType) {
-                const gridX = gameObject.getData('gridX');
-                const gridY = gameObject.getData('gridY');
-                
-                // Attempt to place a tower
-                this.placeTower(gridX, gridY);
+        // Tower info panel elements
+        this.towerInfoPanel = document.getElementById('tower-info');
+        this.towerInfoType = document.getElementById('tower-info-type');
+        this.towerLevelValue = document.getElementById('tower-level-value');
+        this.towerDamageValue = document.getElementById('tower-damage-value');
+        this.towerRangeValue = document.getElementById('tower-range-value');
+        this.towerAmmoValue = document.getElementById('tower-ammo-value');
+        this.sellValue = document.getElementById('sell-value');
+        
+        // Currently selected tower for info display
+        this.selectedTower = null;
+        this.selectedTowerGridX = -1;
+        this.selectedTowerGridY = -1;
+        
+        // Setup sell button
+        document.getElementById('sell-tower-button').addEventListener('click', () => {
+            if (this.selectedTower) {
+                // Call the sell tower function
+                const refundAmount = this.sellTower(this.selectedTowerGridX, this.selectedTowerGridY);
+                if (refundAmount > 0) {
+                    displayError(`Tower sold for ${refundAmount} gold`);
+                    this.hideTowerInfo();
+                }
             }
-            // If right-click or holding shift, show tower info or remove
-            else if (!this.isDragging && (pointer.rightButtonDown() || this.input.keyboard.checkDown(this.input.keyboard.addKey('SHIFT')))) {
+        });
+        
+        // Click anywhere on game to hide tower info
+        this.input.on('pointerdown', (pointer) => {
+            // Hide tower info if clicking outside a cell (in empty space)
+            if (!pointer.gameObject && !this.isDragging) {
+                this.hideTowerInfo();
+                this.cancelTowerPlacement();
+            }
+        });
+        
+        // Add click handler for grid cells to place towers or show tower info
+        this.input.on('gameobjectdown', (pointer, gameObject) => {
+            // Only process if not dragging
+            if (!this.isDragging) {
                 const gridX = gameObject.getData('gridX');
                 const gridY = gameObject.getData('gridY');
                 
                 // Check if there's a tower here
                 const tower = this.gameState.getTower(gridX, gridY);
-                if (tower) {
-                    // If right-click, remove tower
-                    if (pointer.rightButtonDown()) {
-                        this.removeTower(gridX, gridY);
+                
+                // If we have a tower type selected for building
+                if (this.selectedTowerType) {
+                    // If the cell has a tower already
+                    if (tower) {
+                        // Show tower info instead of trying to build
+                        this.showTowerInfo(tower, gridX, gridY);
+                        this.cancelTowerPlacement(); // Exit build mode
+                    } else {
+                        // Attempt to place a tower
+                        const success = this.placeTower(gridX, gridY);
+                        if (success) {
+                            // Clear tower selection after successful placement
+                            this.cancelTowerPlacement();
+                        }
                     }
-                    // Otherwise show tower info (not implemented yet)
+                }
+                // No tower type selected - handle tower info display or right-click
+                else {
+                    if (tower) {
+                        // If right-click, remove tower
+                        if (pointer.rightButtonDown()) {
+                            this.removeTower(gridX, gridY);
+                            this.hideTowerInfo(); // Hide info if showing
+                        } else {
+                            // Normal click - show tower info
+                            this.showTowerInfo(tower, gridX, gridY);
+                        }
+                    } else {
+                        // Clicked on empty cell without building mode
+                        this.hideTowerInfo(); // Hide tower info if showing
+                    }
                 }
             }
         });
@@ -680,6 +749,107 @@ class MapScene extends Phaser.Scene {
                 this.rangeIndicator.setVisible(false);
             }
         });
+    }
+    
+    /**
+     * Show information about a tower
+     * @param {Object} tower - The tower to show info for
+     * @param {number} gridX - X position of the tower on grid
+     * @param {number} gridY - Y position of the tower on grid
+     */
+    showTowerInfo(tower, gridX, gridY) {
+        // Store reference to selected tower
+        this.selectedTower = tower;
+        this.selectedTowerGridX = gridX;
+        this.selectedTowerGridY = gridY;
+        
+        // Update tower info panel content
+        this.towerInfoType.textContent = this.getTowerTypeEmoji(tower.type);
+        this.towerLevelValue.textContent = tower.level;
+        this.towerDamageValue.textContent = tower.damage.toFixed(1);
+        this.towerRangeValue.textContent = tower.range.toFixed(1);
+        this.towerAmmoValue.textContent = tower.ammo;
+        
+        // Calculate refund value (50% of tower cost)
+        const refundValue = Math.floor(tower.cost * 0.5);
+        this.sellValue.textContent = refundValue;
+        
+        // Show tower info panel
+        this.towerInfoPanel.style.display = 'block';
+        
+        // Show range indicator for the selected tower
+        if (this.rangeIndicator) {
+            this.rangeIndicator.setPosition(
+                gridX * this.cellSize + this.cellSize/2,
+                gridY * this.cellSize + this.cellSize/2
+            );
+            this.rangeIndicator.setScale(tower.range * 2 * (this.cellSize/100));
+            this.rangeIndicator.setVisible(true);
+            this.rangeIndicator.setAlpha(0.3);
+        }
+    }
+    
+    /**
+     * Hide tower info panel
+     */
+    hideTowerInfo() {
+        // Hide tower info panel
+        this.towerInfoPanel.style.display = 'none';
+        
+        // Clear selected tower reference
+        this.selectedTower = null;
+        this.selectedTowerGridX = -1;
+        this.selectedTowerGridY = -1;
+        
+        // Hide range indicator
+        if (this.rangeIndicator) {
+            this.rangeIndicator.setVisible(false);
+        }
+    }
+    
+    /**
+     * Get emoji representation for tower type
+     * @param {string} type - Tower type
+     * @returns {string} - Emoji representing the tower type
+     */
+    getTowerTypeEmoji(type) {
+        switch (type) {
+            case 'basic':
+                return '🗼';
+            case 'sniper':
+                return '🏯';
+            case 'splash':
+                return '🏰';
+            default:
+                return '🗼';
+        }
+    }
+    
+    /**
+     * Sell a tower and get a refund
+     * @param {number} gridX - X position of the tower on grid
+     * @param {number} gridY - Y position of the tower on grid
+     * @returns {number} - Amount of gold refunded
+     */
+    sellTower(gridX, gridY) {
+        // Get refund amount from game state
+        const refundAmount = this.gameState.sellTower(gridX, gridY);
+        
+        if (refundAmount > 0) {
+            // Update map
+            this.tdMap.removeTower(gridX, gridY);
+            
+            // Remove tower container (containing tower sprite and ammo bar)
+            this.towerContainer.getAll().forEach(container => {
+                if (container.getData('gridX') === gridX && container.getData('gridY') === gridY) {
+                    container.destroy();
+                }
+            });
+            
+            return refundAmount;
+        }
+        
+        return 0;
     }
     
     selectTowerType(type) {
@@ -739,6 +909,9 @@ class MapScene extends Phaser.Scene {
             displayError('Not enough gold to place this tower!');
             return false;
         }
+        
+        // Hide tower info if showing
+        this.hideTowerInfo();
         
         // Create new tower
         const tower = new Tower(this.selectedTowerType, gridX, gridY);
@@ -832,6 +1005,11 @@ class MapScene extends Phaser.Scene {
             return false;
         }
         
+        // Hide tower info if it's the currently selected tower
+        if (this.selectedTowerGridX === gridX && this.selectedTowerGridY === gridY) {
+            this.hideTowerInfo();
+        }
+        
         // Remove from game state
         if (this.gameState.removeTower(gridX, gridY)) {
             // Update map
@@ -851,9 +1029,17 @@ class MapScene extends Phaser.Scene {
     }
     
     cancelTowerPlacement() {
+        // Clear tower type selection
         this.selectedTowerType = null;
+        
+        // Hide placement preview
         this.towerPreview.setVisible(false);
         this.rangeIndicator.setVisible(false);
+        
+        // Deselect all tower buttons
+        if (this.towerButtons) {
+            this.towerButtons.forEach(button => button.classList.remove('selected'));
+        }
     }
     
     setupCameraControls() {
