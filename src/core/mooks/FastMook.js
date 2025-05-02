@@ -21,7 +21,7 @@ class FastMook extends Mook {
      * Create a fast mook
      * @param {Object} config - Mook configuration
      */
-    constructor(config) {
+    constructor(config = {}) {
         const fastConfig = {
             ...config,
             type: Mook.MOOK_FAST
@@ -31,14 +31,18 @@ class FastMook extends Mook {
     }
     
     /**
-     * Override type properties for fast mook
-     * @param {Object} config - Initial configuration
+     * Initialize stats for fast mook type
+     * @param {Object} config - Optional config to override default values
      */
-    setTypeProperties(config) {
-        super.setTypeProperties(config);
-        
-        // We can override specific properties here if needed
-        // but they're already set in the base class based on type
+    initializeStats(config = {}) {
+        // Fast mook stats
+        this.maxHealth = config.health || 80;
+        this.health = config.health || 80;
+        this.speed = config.speed !== undefined ? config.speed : 1.5;
+        this.reward = config.reward !== undefined ? config.reward : 8;
+        this.damage = config.damage || 2;
+        this.armor = -0.1; // Takes 10% more damage
+        this.emoji = '🚀';
     }
 }
 

@@ -8,11 +8,25 @@ class Mook {
     static MOOK_ARMORED = 'armored';
     static MOOK_TANK = 'tank';
     
-    constructor(type, path) {
+    constructor(config = {}) {
+        // Handle legacy constructor call (type, path)
+        let path;
+        let type;
+
+        if (typeof config === 'string') {
+            // Legacy constructor: (type, path)
+            type = config;
+            path = arguments[1] || [];
+        } else {
+            // Object config constructor
+            type = config.type || Mook.MOOK_STANDARD;
+            path = config.path || [];
+        }
+
         this.type = type;
         this.path = [...path];
         this.currentPathIndex = 0;
-        this.position = { ...this.path[0] };
+        this.position = config.position || (path.length > 0 ? { ...path[0] } : { x: 0, y: 0 });
         this.progress = 0;
         this.active = true;
         this.reachedEnd = false;
@@ -20,40 +34,23 @@ class Mook {
         this.sprite = null;     // Initialize sprite reference to null
         this.healthBar = null;  // Initialize healthBar reference to null
         
-        // Set stats based on mook type
-        switch(type) {
-            case Mook.MOOK_FAST:
-                this.maxHealth = 80;
-                this.health = 80;
-                this.speed = 1.5;
-                this.reward = 8; // Reduced from 10
-                this.damage = 2; // Increased from 1
-                this.emoji = '🚀';
-                break;
-            case Mook.MOOK_ARMORED:
-                this.maxHealth = 150;
-                this.health = 150;
-                this.speed = 0.9;
-                this.reward = 15; // Reduced from 20
-                this.damage = 2; // Increased from 1
-                this.emoji = '🛡️';
-                break;
-            case Mook.MOOK_TANK:
-                this.maxHealth = 300;
-                this.health = 300;
-                this.speed = 0.7;
-                this.reward = 20; // Reduced from 30
-                this.damage = 3; // Increased from 2
-                this.emoji = '🦖';
-                break;
-            default: // Standard
-                this.maxHealth = 100;
-                this.health = 100;
-                this.speed = 1.0;
-                this.reward = 10; // Reduced from 15
-                this.damage = 2; // Increased from 1
-                this.emoji = '👾';
-        }
+        // Set default stats for standard mook
+        this.initializeStats(config);
+    }
+    
+    /**
+     * Initialize stats for this mook type
+     * Override this method in subclasses to define type-specific stats
+     * @param {Object} config - Optional config to override default values
+     */
+    initializeStats(config = {}) {
+        // Default stats for standard mook
+        this.maxHealth = config.health || 100;
+        this.health = config.health || 100;
+        this.speed = config.speed || 1.0;
+        this.reward = config.reward || 10;
+        this.damage = config.damage || 2;
+        this.emoji = '👾';
     }
     
     update(deltaTime) {
@@ -108,8 +105,17 @@ class Mook {
     }
     
     takeDamage(amount) {
-        this.health -= amount;
+        // Apply armor if defined
+        let modifiedAmount = amount;
+        if (this.armor !== undefined) {
+            // Negative armor means more damage, positive means less
+            const armorMultiplier = 1 - this.armor;
+            modifiedAmount = Math.floor(amount * armorMultiplier);
+        }
+        
+        this.health -= modifiedAmount;
         if (this.health <= 0) {
+            this.health = 0;
             this.active = false;
             return true; // Died
         }

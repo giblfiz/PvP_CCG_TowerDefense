@@ -21,7 +21,7 @@ class StandardMook extends Mook {
      * Create a standard mook
      * @param {Object} config - Mook configuration
      */
-    constructor(config) {
+    constructor(config = {}) {
         const standardConfig = {
             ...config,
             type: Mook.MOOK_STANDARD
@@ -31,14 +31,18 @@ class StandardMook extends Mook {
     }
     
     /**
-     * Override type properties for standard mook
-     * @param {Object} config - Initial configuration
+     * Initialize stats for standard mook type
+     * @param {Object} config - Optional config to override default values
      */
-    setTypeProperties(config) {
-        super.setTypeProperties(config);
-        
-        // Standard mook specific properties can be set here if needed
-        // Currently using base class defaults
+    initializeStats(config = {}) {
+        // Standard mook stats - same as base Mook class
+        this.maxHealth = config.health || 100;
+        this.health = config.health || 100;
+        this.speed = config.speed !== undefined ? config.speed : 1.0;
+        this.reward = config.reward !== undefined ? config.reward : 10;
+        this.damage = config.damage || 2;
+        this.armor = 0; // No damage reduction
+        this.emoji = '👾';
     }
 }
 

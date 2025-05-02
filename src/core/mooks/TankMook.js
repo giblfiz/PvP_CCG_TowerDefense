@@ -13,30 +13,30 @@ class TankMook extends Mook {
    * @param {number} [config.reward=30] - Reward for defeating mook (higher than standard)
    * @param {Array} [config.path=[]] - Path for the mook to follow, array of {x, y} points
    */
-  constructor(config) {
-    // Set default higher health
+  constructor(config = {}) {
+    // Ensure tank type
     const tankConfig = {
       ...config,
-      health: config.health || 200,
-      type: 'tank'
+      type: Mook.MOOK_TANK
     };
     
     // Call parent constructor
     super(tankConfig);
-    
-    // Override setTypeProperties to handle tank type
-    this.setTypeProperties(tankConfig);
   }
   
   /**
-   * Set properties based on tank mook type
-   * @param {Object} config - Initial configuration
+   * Initialize stats for tank mook type
+   * @param {Object} config - Optional config to override default values
    */
-  setTypeProperties(config) {
-    // Start with base properties
-    this.speed = config.speed !== undefined ? config.speed : 1.2;
-    this.reward = config.reward !== undefined ? config.reward : 30;
+  initializeStats(config = {}) {
+    // Tank mook stats
+    this.maxHealth = config.health || 300;
+    this.health = config.health || 300;
+    this.speed = config.speed !== undefined ? config.speed : 0.7;
+    this.reward = config.reward !== undefined ? config.reward : 20;
+    this.damage = config.damage || 3;
     this.armor = 0.4; // 40% damage reduction (higher than armored)
+    this.emoji = '🦖';
   }
 }
 

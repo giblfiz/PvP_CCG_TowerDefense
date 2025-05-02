@@ -21,7 +21,7 @@ class ArmoredMook extends Mook {
      * Create an armored mook
      * @param {Object} config - Mook configuration
      */
-    constructor(config) {
+    constructor(config = {}) {
         const armoredConfig = {
             ...config,
             type: Mook.MOOK_ARMORED
@@ -31,14 +31,18 @@ class ArmoredMook extends Mook {
     }
     
     /**
-     * Override type properties for armored mook
-     * @param {Object} config - Initial configuration
+     * Initialize stats for armored mook type
+     * @param {Object} config - Optional config to override default values
      */
-    setTypeProperties(config) {
-        super.setTypeProperties(config);
-        
-        // We can override specific properties here if needed
-        // but they're already set in the base class based on type
+    initializeStats(config = {}) {
+        // Armored mook stats
+        this.maxHealth = config.health || 150;
+        this.health = config.health || 150;
+        this.speed = config.speed !== undefined ? config.speed : 0.9;
+        this.reward = config.reward !== undefined ? config.reward : 15;
+        this.damage = config.damage || 2;
+        this.armor = 0.3; // 30% damage reduction
+        this.emoji = '🛡️';
     }
 }
 
