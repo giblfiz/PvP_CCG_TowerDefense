@@ -501,20 +501,15 @@ class MapScene extends Phaser.Scene {
                         mook.position.y * this.cellSize + this.cellSize/2
                     );
                     
-                    // Update health bar
+                    // Update health bar - simplified to just shrink a red bar
                     if (mook.healthBar) {
                         const healthPercent = mook.getHealthPercent();
                         mook.healthBar.width = mook.barWidth * healthPercent;
-                        mook.healthBar.x = -mook.barWidth/2 + (mook.barWidth * healthPercent)/2;
+                        // Keep bar anchored at left edge with fixed position
+                        mook.healthBar.x = -mook.barWidth/2;
                         
-                        // Change color based on health
-                        if (healthPercent < 0.3) {
-                            mook.healthBar.fillColor = 0xff3300;
-                        } else if (healthPercent < 0.6) {
-                            mook.healthBar.fillColor = 0xffff00;
-                        } else {
-                            mook.healthBar.fillColor = 0x00ff00;
-                        }
+                        // Always use red color
+                        mook.healthBar.fillColor = 0xff3300;
                     }
                     
                     // Ensure visible

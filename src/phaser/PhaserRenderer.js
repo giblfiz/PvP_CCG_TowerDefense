@@ -425,27 +425,19 @@ class PhaserRenderer {
         text.setOrigin(0.5);
         container.add(text);
         
-        // Create health bar background
+        // Create health bar - simplified to just a red bar
         const barWidth = this.cellSize * 0.8;
         const barHeight = this.cellSize * 0.1;
-        const barBg = this.scene.add.rectangle(
-            0,
-            this.cellSize * 0.4,
-            barWidth,
-            barHeight,
-            0xff0000
-        );
-        container.add(barBg);
         
-        // Create health bar foreground
+        // Create a single red health bar
         const healthBar = this.scene.add.rectangle(
-            -barWidth/2 + (barWidth * mook.getHealthPercent())/2,
+            -barWidth/2, // Anchored at left edge
             this.cellSize * 0.4,
-            barWidth * mook.getHealthPercent(),
+            barWidth * mook.getHealthPercent(), // Initial width based on health
             barHeight,
-            0x00ff00
+            0xff0000 // Always red
         );
-        healthBar.setOrigin(0, 0.5);
+        healthBar.setOrigin(0, 0.5); // Anchor at left edge
         container.add(healthBar);
         
         // Store references in mook object
