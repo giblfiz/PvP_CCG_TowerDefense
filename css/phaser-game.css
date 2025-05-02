@@ -126,46 +126,67 @@ body {
     position: fixed;
     bottom: 80px;
     right: 10px;
-    background-color: rgba(0, 0, 0, 0.9);
-    padding: 12px;
+    background-color: rgba(0, 0, 0, 0.85);
+    padding: 15px;
     border-radius: 8px;
-    z-index: 2000;
+    z-index: 9999;
     color: white;
     width: 180px;
-    border: 2px solid #ff0000;
+    height: auto;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 2px solid gold;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
     pointer-events: auto;
+    display: none; /* Hidden by default, shown via JS */
 }
 
-#tower-info-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-#tower-info-type {
-    font-size: 24px;
+#tower-title {
     text-align: center;
-    margin-bottom: 5px;
-}
-
-#sell-tower-button {
-    background-color: #aa3333;
-    color: white;
-    border: 2px solid #ff0000;
-    padding: 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
     font-weight: bold;
-    transition: background-color 0.2s;
-    font-size: 16px;
-    z-index: 2100;
-    width: 100%;
-    display: block;
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: gold;
+    border-bottom: 1px solid gold;
+    padding-bottom: 5px;
 }
 
-#sell-tower-button:hover {
-    background-color: #cc4444;
+#tower-type {
+    color: #88ccff;
+    font-weight: bold;
+}
+
+#tower-damage {
+    color: #ff8888;
+    font-weight: bold;
+}
+
+#tower-ammo {
+    color: #88ff88;
+    font-weight: bold;
+}
+
+#sell-button {
+    background-color: #cc3333;
+    color: white;
+    width: 100%;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 8px;
+    margin-top: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    transition: background-color 0.2s;
+}
+
+#sell-button:hover {
+    background-color: #ff4444;
+}
+
+#sell-value {
+    color: gold;
+    font-weight: bold;
 }
 
 @media (max-width: 768px) {
