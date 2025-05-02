@@ -116,8 +116,11 @@ class PhaserRenderer {
      * Create all cell textures
      */
     createCellTextures() {
-        // Empty cell texture
+        // Empty cell texture - for cells where towers cannot be placed
         this.createEmptyCellTexture('empty-cell');
+        
+        // Buildable cell texture - for cells where towers can be placed
+        this.createBuildableCellTexture('buildable-cell');
         
         // Path cell texture
         this.createPathCellTexture('path-cell');
@@ -147,7 +150,7 @@ class PhaserRenderer {
     }
     
     /**
-     * Create empty cell texture
+     * Create empty cell texture (for cells where towers cannot be placed)
      * @param {string} key - Texture key
      */
     createEmptyCellTexture(key) {
@@ -156,6 +159,34 @@ class PhaserRenderer {
         graphics.fillRect(0, 0, 100, 100);
         graphics.lineStyle(2, 0x555555);
         graphics.strokeRect(1, 1, 98, 98);
+        graphics.generateTexture(key, 100, 100);
+        graphics.clear();
+    }
+    
+    /**
+     * Create buildable cell texture (for cells where towers can be placed)
+     * @param {string} key - Texture key
+     */
+    createBuildableCellTexture(key) {
+        const graphics = this.scene.make.graphics();
+        
+        // Slightly lighter background to indicate buildable area
+        graphics.fillStyle(0x444444);
+        graphics.fillRect(0, 0, 100, 100);
+        
+        // Border
+        graphics.lineStyle(2, 0x666666);
+        graphics.strokeRect(1, 1, 98, 98);
+        
+        // Add a subtle "+" pattern to indicate buildable
+        graphics.lineStyle(1, 0x777777);
+        graphics.beginPath();
+        graphics.moveTo(50, 25);
+        graphics.lineTo(50, 75);
+        graphics.moveTo(25, 50);
+        graphics.lineTo(75, 50);
+        graphics.strokePath();
+        
         graphics.generateTexture(key, 100, 100);
         graphics.clear();
     }

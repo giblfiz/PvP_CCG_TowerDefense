@@ -305,7 +305,14 @@ class TDMap {
         }
         
         // Can only place towers on empty cells
-        return this.grid[x][y] === TDMap.CELL_EMPTY;
+        if (this.grid[x][y] !== TDMap.CELL_EMPTY) {
+            return false;
+        }
+        
+        // Create a repeating pattern where only 1 in 4 spaces is available
+        // This creates a checkerboard where every other square in every other row is available
+        // Results in 1/4 of empty squares being available for towers
+        return (x % 2 === 0 && y % 2 === 0);
     }
     
     /**

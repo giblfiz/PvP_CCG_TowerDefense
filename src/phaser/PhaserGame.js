@@ -115,7 +115,12 @@ class MapScene extends Phaser.Scene {
                         cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'exit-cell');
                         break;
                     default:
-                        cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'empty-cell');
+                        // For empty cells, check if tower can be placed there (using the pattern)
+                        if (this.tdMap.canPlaceTower(x, y)) {
+                            cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'buildable-cell');
+                        } else {
+                            cellSprite = this.add.image(x * this.cellSize + this.cellSize/2, y * this.cellSize + this.cellSize/2, 'empty-cell');
+                        }
                 }
                 
                 cellSprite.setScale(this.cellSize/100); // Scale to cell size
