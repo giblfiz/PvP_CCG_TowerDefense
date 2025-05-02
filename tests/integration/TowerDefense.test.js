@@ -16,30 +16,30 @@ describe('Tower Defense Integration', () => {
     });
     gameState.addTower(tower);
     
-    // Add enemies
-    const enemy1 = new Mook({
+    // Add mooks (previously enemies)
+    const mook1 = new Mook({
       position: { x: 120, y: 120 }, // In range
       health: 100,
       speed: 1
     });
     
-    const enemy2 = new Mook({
+    const mook2 = new Mook({
       position: { x: 200, y: 200 }, // Out of range
       health: 100,
       speed: 1
     });
     
-    gameState.addEnemy(enemy1);
-    gameState.addEnemy(enemy2);
+    gameState.addMook(mook1);
+    gameState.addMook(mook2);
     
     // Update game (at time 1000ms)
     gameState.update(1000);
     
-    // Enemy 1 should have taken damage
-    expect(enemy1.health).toBeLessThan(100);
+    // Mook 1 should have taken damage
+    expect(mook1.health).toBeLessThan(100);
     
-    // Enemy 2 should not have taken damage
-    expect(enemy2.health).toBe(100);
+    // Mook 2 should not have taken damage
+    expect(mook2.health).toBe(100);
   });
   
   test('towers should attack closest enemy when multiple enemies are in range', () => {
@@ -54,21 +54,21 @@ describe('Tower Defense Integration', () => {
     });
     gameState.addTower(tower);
     
-    // Add enemies
-    const enemy1 = new Mook({
+    // Add mooks
+    const mook1 = new Mook({
       position: { x: 150, y: 150 }, // Distance ~70.7
       health: 100,
       speed: 1
     });
     
-    const enemy2 = new Mook({
+    const mook2 = new Mook({
       position: { x: 120, y: 120 }, // Distance ~28.3 (closer)
       health: 100,
       speed: 1
     });
     
-    gameState.addEnemy(enemy1);
-    gameState.addEnemy(enemy2);
+    gameState.addMook(mook1);
+    gameState.addMook(mook2);
     
     // Mock attack method to track which enemy was attacked
     const originalAttack = tower.attack;
@@ -81,8 +81,8 @@ describe('Tower Defense Integration', () => {
     // Update game
     gameState.update(1000);
     
-    // Closer enemy (enemy2) should have been attacked
-    expect(attackedEnemy).toBe(enemy2);
+    // Closer enemy (mook2) should have been attacked
+    expect(attackedEnemy).toBe(mook2);
   });
   
   test('upgrading tower should increase its effectiveness against enemies', () => {
