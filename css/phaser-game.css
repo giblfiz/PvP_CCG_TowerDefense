@@ -97,8 +97,8 @@ body {
 #error-display {
     position: fixed;
     bottom: 80px;
-    left: 10px;
-    right: 10px;
+    left: 240px; /* Increased left margin by 20px */
+    right: 220px; /* Increased right margin by 20px */
     max-height: 150px;
     overflow-y: auto;
     background-color: rgba(255, 0, 0, 0.8);
