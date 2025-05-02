@@ -14,6 +14,7 @@
                 <div id="money-display"><span>💰</span><span id="money-value">100</span></div>
                 <div id="wave-display"><span>🌊</span><span id="wave-value">0</span></div>
             </div>
+            <div id="error-container" style="display: none;"></div>
             <div id="controls-panel">
                 <button id="start-wave-button">Start Wave</button>
                 <div id="tower-selector">
@@ -24,7 +25,6 @@
             </div>
         </div>
         <canvas id="game-canvas"></canvas>
-        <div id="error-container" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(255, 0, 0, 0.7); color: white; padding: 20px; border-radius: 10px; z-index: 1000;"></div>
     </div>
 
     <!-- Load vendor library -->
@@ -39,9 +39,9 @@
                 return true;
             } catch (error) {
                 console.error('PIXI.js load check failed:', error);
-                document.getElementById('error-container').style.display = 'block';
-                document.getElementById('error-container').textContent = 
-                    'Failed to load PIXI.js. Please check your browser console for details.';
+                const errorContainer = document.getElementById('error-container');
+                errorContainer.style.display = 'block';
+                errorContainer.textContent = 'Failed to load PIXI.js. Please check your browser console for details.';
                 return false;
             }
         }
@@ -60,8 +60,9 @@
             };
             pixiScript.onerror = function() {
                 console.error('Alternative PIXI.js load failed');
-                document.getElementById('error-container').textContent = 
-                    'Failed to load game engine. Please try a different browser.';
+                const errorContainer = document.getElementById('error-container');
+                errorContainer.style.display = 'block';
+                errorContainer.textContent = 'Failed to load game engine. Please try a different browser.';
             };
             document.head.appendChild(pixiScript);
         } else {
@@ -77,9 +78,9 @@
                 script.onload = callback;
                 script.onerror = function() {
                     console.error('Failed to load script:', url);
-                    document.getElementById('error-container').style.display = 'block';
-                    document.getElementById('error-container').textContent = 
-                        'Failed to load game scripts. Please check your browser console.';
+                    const errorContainer = document.getElementById('error-container');
+                    errorContainer.style.display = 'block';
+                    errorContainer.textContent = 'Failed to load game scripts. Please check your browser console.';
                 };
                 document.body.appendChild(script);
             }
@@ -122,9 +123,9 @@
                 window.game.init();
             } catch (error) {
                 console.error('Game initialization failed:', error);
-                document.getElementById('error-container').style.display = 'block';
-                document.getElementById('error-container').textContent = 
-                    'Failed to initialize game. Error: ' + error.message;
+                const errorContainer = document.getElementById('error-container');
+                errorContainer.style.display = 'block';
+                errorContainer.textContent = 'Failed to initialize game. Error: ' + error.message;
             }
         }
     </script>

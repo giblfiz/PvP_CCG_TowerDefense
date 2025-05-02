@@ -120,23 +120,31 @@ class Game {
   }
   
   /**
-   * Show an error message on the screen
+   * Show an error message in the error container
    * @param {string} message - Error message to display
    */
   showErrorMessage(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.style.position = 'absolute';
-    errorDiv.style.top = '50%';
-    errorDiv.style.left = '50%';
-    errorDiv.style.transform = 'translate(-50%, -50%)';
-    errorDiv.style.padding = '20px';
-    errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
-    errorDiv.style.color = 'white';
-    errorDiv.style.borderRadius = '10px';
-    errorDiv.style.zIndex = '1000';
-    errorDiv.style.fontWeight = 'bold';
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
+    console.error(message);
+    
+    // Use UI handler if available
+    if (this.ui) {
+      this.ui.showError(message);
+    } else {
+      // Fallback if UI not initialized yet
+      const errorContainer = document.getElementById('error-container');
+      if (errorContainer) {
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+      }
+    }
+  }
+  
+  /**
+   * Test function to trigger an error message
+   * @param {string} message - Error message to display
+   */
+  testErrorMessage(message = 'This is a test error message') {
+    this.showErrorMessage(message);
   }
 
   /**

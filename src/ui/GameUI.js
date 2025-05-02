@@ -171,7 +171,36 @@ class GameUI {
   showMessage(message, type = 'info') {
     console.log(`[${type}] ${message}`);
     
-    // In a future version, we can add an on-screen message display
-    // For now, just using console.log
+    // Display error messages in the error container
+    if (type === 'error') {
+      this.showError(message);
+    }
+  }
+  
+  /**
+   * Show an error message in the error container
+   * @param {string} message - Error message to display
+   */
+  showError(message) {
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+      errorContainer.textContent = message;
+      errorContainer.style.display = 'block';
+      
+      // Auto-hide after 5 seconds for non-critical errors
+      setTimeout(() => {
+        errorContainer.style.display = 'none';
+      }, 5000);
+    }
+  }
+  
+  /**
+   * Hide the error container
+   */
+  hideError() {
+    const errorContainer = document.getElementById('error-container');
+    if (errorContainer) {
+      errorContainer.style.display = 'none';
+    }
   }
 }
