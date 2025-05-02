@@ -7,7 +7,7 @@ class GameState {
      * Create a new game state
      */
     constructor() {
-        this.gold = 100; // Reduced from 600 to 100 for increased difficulty
+        this.gold = 130; // Reduced from 600 to 100 for increased difficulty
         this.lives = 20;
         this.wave = 0;
         this.towers = [];
