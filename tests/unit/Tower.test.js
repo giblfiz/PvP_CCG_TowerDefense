@@ -13,6 +13,7 @@ describe('Tower', () => {
     expect(tower.attackSpeed).toBeGreaterThan(0);
     expect(tower.cost).toBeGreaterThan(0);
     expect(tower.lastAttackTime).toBe(0);
+    expect(tower.ammo).toBe(40); // Default ammo
   });
 
   // Test custom initialization
@@ -24,7 +25,8 @@ describe('Tower', () => {
       damage: 15,
       range: 150,
       attackSpeed: 2,
-      cost: 200
+      cost: 200,
+      ammo: 30
     };
     
     const tower = new Tower(customProps);
@@ -35,18 +37,22 @@ describe('Tower', () => {
     expect(tower.range).toBe(150);
     expect(tower.attackSpeed).toBe(2);
     expect(tower.cost).toBe(200);
+    expect(tower.ammo).toBe(30);
   });
 
   // Test upgrading
   test('should upgrade tower correctly', () => {
-    const tower = new Tower({ position: { x: 10, y: 10 } });
+    const tower = new Tower({ position: { x: 10, y: 10 }, ammo: 10 });
     const initialLevel = tower.level;
     const initialDamage = tower.damage;
+    const initialAmmo = tower.ammo;
     
     tower.upgrade();
     
     expect(tower.level).toBe(initialLevel + 1);
     expect(tower.damage).toBeGreaterThan(initialDamage);
+    expect(tower.ammo).toBeGreaterThan(initialAmmo); // Ammo should increase
+    expect(tower.ammo).toBeLessThanOrEqual(40); // But not exceed the max
   });
 
   // Test target acquisition
@@ -130,6 +136,93 @@ describe('Tower', () => {
     // Should attack again as cooldown has finished
     expect(laterDamage).toBe(20);
     expect(enemy.takeDamage).toHaveBeenCalledTimes(2);
+  });
+  
+  // Test ammo functionality
+  test('should decrease ammo when attacking', () => {
+    const tower = new Tower({ 
+      position: { x: 100, y: 100 },
+      damage: 20,
+      ammo: 5
+    });
+    
+    const enemy = { 
+      position: { x: 120, y: 120 }, 
+      health: 100,
+      takeDamage: jest.fn().mockReturnValue(20)
+    };
+    
+    // Initial ammo check
+    expect(tower.ammo).toBe(5);
+    
+    // First attack
+    tower.attack(enemy, 1000);
+    expect(enemy.takeDamage).toHaveBeenCalledTimes(1);
+    expect(tower.ammo).toBe(4);
+    
+    // Second attack
+    tower.attack(enemy, 2000);
+    expect(enemy.takeDamage).toHaveBeenCalledTimes(2);
+    expect(tower.ammo).toBe(3);
+  });
+  
+  test('should not attack when out of ammo', () => {
+    const tower = new Tower({ 
+      position: { x: 100, y: 100 },
+      damage: 20,
+      ammo: 1
+    });
+    
+    const enemy = { 
+      position: { x: 120, y: 120 }, 
+      health: 100,
+      takeDamage: jest.fn().mockReturnValue(20)
+    };
+    
+    // First attack (uses the only ammo)
+    const damage1 = tower.attack(enemy, 1000);
+    expect(damage1).toBe(20);
+    expect(enemy.takeDamage).toHaveBeenCalledTimes(1);
+    expect(tower.ammo).toBe(0);
+    
+    // Second attack (no ammo left)
+    const damage2 = tower.attack(enemy, 2000);
+    expect(damage2).toBe(0);
+    expect(enemy.takeDamage).toHaveBeenCalledTimes(1); // Still called only once
+    expect(tower.ammo).toBe(0);
+  });
+  
+  test('should calculate ammo percentage correctly', () => {
+    const tower = new Tower({ 
+      position: { x: 100, y: 100 },
+      ammo: 20 // Half of max ammo
+    });
+    
+    expect(tower.getAmmoPercent()).toBe(0.5); // 20/40 = 50%
+    
+    tower.ammo = 10;
+    expect(tower.getAmmoPercent()).toBe(0.25); // 10/40 = 25%
+    
+    tower.ammo = 0;
+    expect(tower.getAmmoPercent()).toBe(0); // 0/40 = 0%
+    
+    tower.ammo = 40;
+    expect(tower.getAmmoPercent()).toBe(1); // 40/40 = 100%
+  });
+  
+  test('should correctly identify when out of ammo', () => {
+    const tower = new Tower({ 
+      position: { x: 100, y: 100 },
+      ammo: 1
+    });
+    
+    expect(tower.isOutOfAmmo()).toBe(false);
+    
+    tower.ammo = 0;
+    expect(tower.isOutOfAmmo()).toBe(true);
+    
+    tower.ammo = -1; // Should not happen but testing anyway
+    expect(tower.isOutOfAmmo()).toBe(true);
   });
 
   // Test utility methods

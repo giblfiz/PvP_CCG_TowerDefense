@@ -19,6 +19,7 @@ class Tower {
         this.gridY = gridY;
         this.level = 1;
         this.target = null;
+        this.ammo = 40; // All towers start with 40 ammo
         
         // Set stats based on tower type
         switch(type) {
@@ -64,7 +65,7 @@ class Tower {
     
     /**
      * Upgrade the tower
-     * Increases damage, range, and fire rate
+     * Increases damage, range, fire rate, and restores some ammo
      */
     upgrade() {
         this.level++;
@@ -72,6 +73,9 @@ class Tower {
         this.range += 0.5;
         this.fireRate *= 1.2;
         this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
+        
+        // Restore some ammo when upgrading (20 shots)
+        this.ammo = Math.min(40, this.ammo + 20);
     }
     
     /**
@@ -80,7 +84,7 @@ class Tower {
      * @returns {boolean} Whether tower can fire
      */
     canFire(time) {
-        return time - this.lastFired >= 1000 / this.fireRate;
+        return this.ammo > 0 && time - this.lastFired >= 1000 / this.fireRate;
     }
     
     /**
@@ -90,7 +94,27 @@ class Tower {
      */
     fire(time) {
         this.lastFired = time;
-        return this.damage;
+        if (this.ammo > 0) {
+            this.ammo--;
+            return this.damage;
+        }
+        return 0;
+    }
+    
+    /**
+     * Get ammo percentage for visual indicator
+     * @returns {number} Percentage of ammo remaining (0-1)
+     */
+    getAmmoPercent() {
+        return this.ammo / 40; // Initial ammo is 40
+    }
+    
+    /**
+     * Check if tower is out of ammo
+     * @returns {boolean} Whether tower is out of ammo
+     */
+    isOutOfAmmo() {
+        return this.ammo <= 0;
     }
     
     /**

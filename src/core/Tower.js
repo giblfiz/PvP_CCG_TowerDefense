@@ -11,6 +11,7 @@ class Tower {
    * @param {number} [config.range=100] - Tower attack range
    * @param {number} [config.attackSpeed=1] - Attacks per second
    * @param {number} [config.cost=100] - Tower cost in game currency
+   * @param {number} [config.ammo=40] - Tower ammo (shots available)
    */
   constructor(config) {
     this.position = config.position;
@@ -20,11 +21,12 @@ class Tower {
     this.attackSpeed = config.attackSpeed || 1;
     this.cost = config.cost || 100;
     this.lastAttackTime = 0;
+    this.ammo = config.ammo || 40; // Default to 40 ammo
   }
 
   /**
    * Upgrade the tower to the next level
-   * Increases damage and potentially other stats
+   * Increases damage and potentially other stats, and restores some ammo
    */
   upgrade() {
     this.level += 1;
@@ -37,6 +39,9 @@ class Tower {
     
     // Attack speed increases slightly
     this.attackSpeed = this.attackSpeed * 1.1;
+    
+    // Restore some ammo (20 shots)
+    this.ammo = Math.min(40, this.ammo + 20);
   }
 
   /**
@@ -69,14 +74,14 @@ class Tower {
    * Attack a target (enemy/mook)
    * @param {Object} target - The target to attack
    * @param {number} currentTime - Current game time in milliseconds
-   * @returns {number} - Damage dealt (0 if on cooldown)
+   * @returns {number} - Damage dealt (0 if on cooldown or out of ammo)
    */
   attack(target, currentTime) {
-    // Check if attack is on cooldown
+    // Check if attack is on cooldown or out of ammo
     const cooldownTime = 1000 / this.attackSpeed; // Convert attacks/sec to milliseconds
     
-    if (currentTime - this.lastAttackTime < cooldownTime) {
-      return 0; // Still on cooldown
+    if (currentTime - this.lastAttackTime < cooldownTime || this.ammo <= 0) {
+      return 0; // Still on cooldown or out of ammo
     }
     
     // Update last attack time
@@ -87,6 +92,9 @@ class Tower {
       return 0;
     }
     
+    // Use ammo
+    this.ammo--;
+    
     // Deal damage to target using takeDamage method if available
     if (target.takeDamage) {
       return target.takeDamage(this.damage);
@@ -94,6 +102,22 @@ class Tower {
       // For backward compatibility with targets that don't have takeDamage
       return this.damage;
     }
+  }
+  
+  /**
+   * Get ammo percentage for visual indicator
+   * @returns {number} - Percentage of ammo remaining (0-1)
+   */
+  getAmmoPercent() {
+    return this.ammo / 40; // Initial ammo is 40
+  }
+  
+  /**
+   * Check if tower is out of ammo
+   * @returns {boolean} - Whether tower is out of ammo
+   */
+  isOutOfAmmo() {
+    return this.ammo <= 0;
   }
 
   /**

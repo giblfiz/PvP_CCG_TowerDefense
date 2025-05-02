@@ -756,31 +756,66 @@ class MapScene extends Phaser.Scene {
         const worldX = gridX * this.cellSize + this.cellSize/2;
         const worldY = gridY * this.cellSize + this.cellSize/2;
         
+        // Create a container for the tower and its ammo bar
+        const towerContainer = this.add.container(worldX, worldY);
+        
+        // Add tower sprite to container
         let towerSprite;
         switch(tower.type) {
             case 'basic':
-                towerSprite = this.add.image(worldX, worldY, 'basic-tower');
+                towerSprite = this.add.image(0, 0, 'basic-tower');
                 break;
             case 'sniper':
-                towerSprite = this.add.image(worldX, worldY, 'sniper-tower');
+                towerSprite = this.add.image(0, 0, 'sniper-tower');
                 break;
             case 'splash':
-                towerSprite = this.add.image(worldX, worldY, 'splash-tower');
+                towerSprite = this.add.image(0, 0, 'splash-tower');
                 break;
             default:
-                towerSprite = this.add.image(worldX, worldY, 'basic-tower');
+                towerSprite = this.add.image(0, 0, 'basic-tower');
         }
         
         // Scale tower to fit cell
         towerSprite.setScale(this.cellSize/100 * 0.7);
         
-        // Store reference to gridX and gridY for reference
-        towerSprite.setData('gridX', gridX);
-        towerSprite.setData('gridY', gridY);
-        towerSprite.setData('tower', tower);
+        // Add tower sprite to container
+        towerContainer.add(towerSprite);
+        
+        // Create ammo bar background (gray)
+        const barWidth = this.cellSize * 0.6;
+        const barHeight = this.cellSize * 0.1;
+        const ammoBarBackground = this.add.rectangle(
+            0, 
+            this.cellSize * 0.3, // Position below tower
+            barWidth,
+            barHeight,
+            0x666666 // Gray color
+        );
+        ammoBarBackground.setOrigin(0.5, 0.5);
+        towerContainer.add(ammoBarBackground);
+        
+        // Create ammo bar foreground (light gray)
+        const ammoBar = this.add.rectangle(
+            -barWidth/2, // Anchored at left edge
+            this.cellSize * 0.3, // Same position as background
+            barWidth, // Full width initially
+            barHeight,
+            0xaaaaaa // Light gray color
+        );
+        ammoBar.setOrigin(0, 0.5); // Anchor at left edge
+        towerContainer.add(ammoBar);
+        
+        // Store reference to ammo bar for updating
+        tower.ammoBar = ammoBar;
+        tower.barWidth = barWidth;
+        
+        // Store reference to gridX and gridY and tower
+        towerContainer.setData('gridX', gridX);
+        towerContainer.setData('gridY', gridY);
+        towerContainer.setData('tower', tower);
         
         // Add to container
-        this.towerContainer.add(towerSprite);
+        this.towerContainer.add(towerContainer);
         
         // Hide placement preview
         this.towerPreview.setVisible(false);
@@ -802,10 +837,10 @@ class MapScene extends Phaser.Scene {
             // Update map
             this.tdMap.removeTower(gridX, gridY);
             
-            // Remove tower sprite
-            this.towerContainer.getAll().forEach(sprite => {
-                if (sprite.getData('gridX') === gridX && sprite.getData('gridY') === gridY) {
-                    sprite.destroy();
+            // Remove tower container (containing tower sprite and ammo bar)
+            this.towerContainer.getAll().forEach(container => {
+                if (container.getData('gridX') === gridX && container.getData('gridY') === gridY) {
+                    container.destroy();
                 }
             });
             
@@ -977,59 +1012,67 @@ class MapScene extends Phaser.Scene {
         // Handle tower attacks and their visual effects
         if (this.gameState.towers && this.gameState.towers.length > 0) {
             for (const tower of this.gameState.towers) {
-                // Check if tower can fire
+                // Update ammo bar visualization
+                if (tower.ammoBar) {
+                    tower.ammoBar.width = tower.barWidth * tower.getAmmoPercent();
+                }
+                
+                // Check if tower can fire (now also checks for ammo)
                 if (tower.canFire(time)) {
                     // Find a target
                     const target = tower.findTarget(this.gameState.mooks, this.cellSize);
                     if (target) {
-                        // Apply damage from tower to target
+                        // Apply damage from tower to target (fire method now handles ammo usage)
                         const damage = tower.fire(time);
                         
-                        // Handle splash damage
-                        if (tower.splashRadius > 0) {
-                            // Find all mooks in splash radius
-                            const splashedMooks = this.gameState.mooks.filter(mook => {
-                                if (!mook.active || mook.reachedEnd) return false;
-                                if (mook === target) return true; // Direct target always gets hit
+                        // Only continue if damage was actually dealt (tower had ammo)
+                        if (damage > 0) {
+                            // Handle splash damage
+                            if (tower.splashRadius > 0) {
+                                // Find all mooks in splash radius
+                                const splashedMooks = this.gameState.mooks.filter(mook => {
+                                    if (!mook.active || mook.reachedEnd) return false;
+                                    if (mook === target) return true; // Direct target always gets hit
+                                    
+                                    const dx = Math.abs(mook.position.x - target.position.x);
+                                    const dy = Math.abs(mook.position.y - target.position.y);
+                                    return dx <= tower.splashRadius && dy <= tower.splashRadius;
+                                });
                                 
-                                const dx = Math.abs(mook.position.x - target.position.x);
-                                const dy = Math.abs(mook.position.y - target.position.y);
-                                return dx <= tower.splashRadius && dy <= tower.splashRadius;
-                            });
-                            
-                            // Apply damage to all mooks in splash radius
-                            const attackResults = [];
-                            for (const mook of splashedMooks) {
-                                const distanceRatio = mook === target ? 1 : 0.5; // Reduced damage for splash
-                                const isDead = mook.takeDamage(damage * distanceRatio);
-                                if (isDead) {
-                                    this.gameState.mookKilled(mook);
-                                    attackResults.push({
-                                        mook,
-                                        isDead: true
-                                    });
-                                } else {
-                                    attackResults.push({
-                                        mook,
-                                        isDead: false
-                                    });
+                                // Apply damage to all mooks in splash radius
+                                const attackResults = [];
+                                for (const mook of splashedMooks) {
+                                    const distanceRatio = mook === target ? 1 : 0.5; // Reduced damage for splash
+                                    const isDead = mook.takeDamage(damage * distanceRatio);
+                                    if (isDead) {
+                                        this.gameState.mookKilled(mook);
+                                        attackResults.push({
+                                            mook,
+                                            isDead: true
+                                        });
+                                    } else {
+                                        attackResults.push({
+                                            mook,
+                                            isDead: false
+                                        });
+                                    }
                                 }
+                                
+                                // Create visual effects
+                                this.createTowerAttackEffects(tower, attackResults);
+                            } else {
+                                // Direct damage to a single target
+                                const isDead = target.takeDamage(damage);
+                                if (isDead) {
+                                    this.gameState.mookKilled(target);
+                                }
+                                
+                                // Create visual effects
+                                this.createTowerAttackEffects(tower, [{
+                                    mook: target,
+                                    isDead
+                                }]);
                             }
-                            
-                            // Create visual effects
-                            this.createTowerAttackEffects(tower, attackResults);
-                        } else {
-                            // Direct damage to a single target
-                            const isDead = target.takeDamage(damage);
-                            if (isDead) {
-                                this.gameState.mookKilled(target);
-                            }
-                            
-                            // Create visual effects
-                            this.createTowerAttackEffects(tower, [{
-                                mook: target,
-                                isDead
-                            }]);
                         }
                     }
                 }
