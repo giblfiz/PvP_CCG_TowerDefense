@@ -13,14 +13,21 @@
    - Added script tag to load the new file
    - Created alias `Mook = PhaserMook` to maintain compatibility
 
+3. **Extract MapScene class to external file**
+   - Created a new file `src/phaser/PhaserGame.js`
+   - Moved MapScene class definition from `phaser-map.html` to the new file
+   - Moved game initialization code to the new file
+   - Added script tag to load the new file
+   - Updated phaser-map.html to use the external MapScene class
+
 ## Current Code Structure
 
 The current `phaser-map.html` file now contains:
 - HTML structure
 - JavaScript error handling
-- External CSS and JavaScript file references
-- JavaScript game class definitions (Tower, TDMap, GameState, MapScene)
-- Game initialization code
+- External CSS and JavaScript file references (now including PhaserGame.js)
+- JavaScript game class definitions (Tower, TDMap, GameState)
+- Simplified game initialization that uses the external MapScene class
 
 ## Planned Next Steps
 
@@ -28,7 +35,11 @@ The current `phaser-map.html` file now contains:
    - Move Tower class to `src/core/Tower.js`
    - Move TDMap class to `src/core/Map.js`
    - Move GameState class to `src/core/GameState.js`
-   - Move MapScene class to `src/phaser/PhaserGame.js`
+
+2. **Refactor MapScene class**
+   - The MapScene class is still quite large (1700+ lines)
+   - Should be broken down into smaller, more manageable components
+   - Consider extracting rendering, camera controls, tower placement, and mook handling into separate modules
 
 2. **Update HTML file to reference external JavaScript files**
    - Add script tags to load each JavaScript file
